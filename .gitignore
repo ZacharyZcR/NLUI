@@ -1,0 +1,5 @@
+kelper
+kelper.exe
+*.db
+kelper.yaml
+!kelper.example.yaml

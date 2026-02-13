@@ -1,0 +1,15 @@
+llm:
+  api_base: http://localhost:11434/v1
+  api_key: ""
+  model: qwen2.5:7b
+
+targets:
+  - name: my-backend
+    base_url: http://localhost:8080
+    spec: http://localhost:8080/swagger/doc.json
+    auth:
+      type: bearer
+    description: "主业务后端"
+
+server:
+  port: 9000
