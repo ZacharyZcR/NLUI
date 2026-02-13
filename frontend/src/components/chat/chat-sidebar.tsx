@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useI18n } from "@/lib/i18n";
 import type { Conversation } from "@/lib/api";
 
 interface ChatSidebarProps {
@@ -14,18 +15,20 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete }: ChatSidebarProps) {
+  const { t } = useI18n();
+
   return (
     <div className="flex flex-col h-full w-64 border-r bg-muted/30">
       <div className="p-4">
         <Button onClick={onNew} className="w-full" variant="outline" size="sm">
-          + 新对话
+          {t("sidebar.new")}
         </Button>
       </div>
       <Separator />
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
           {conversations.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8">暂无对话</p>
+            <p className="text-xs text-muted-foreground text-center py-8">{t("sidebar.empty")}</p>
           )}
           {conversations.map((conv) => (
             <div
@@ -35,7 +38,7 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
               }`}
               onClick={() => onSelect(conv.id)}
             >
-              <span className="flex-1 truncate">{conv.title || "未命名对话"}</span>
+              <span className="flex-1 truncate">{conv.title || t("sidebar.untitled")}</span>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

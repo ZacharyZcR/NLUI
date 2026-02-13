@@ -44,6 +44,7 @@ func New(cfg *config.Config, loop *toolloop.Loop, convMgr *conversation.Manager,
 	api := r.Group("/api")
 	{
 		api.GET("/health", s.health)
+		api.GET("/info", s.info)
 		api.POST("/chat", s.chat)
 		api.GET("/conversations", s.listConversations)
 		api.POST("/conversations", s.createConversation)
@@ -63,6 +64,10 @@ func (s *Server) Run() error {
 
 func (s *Server) health(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok", "tools": len(s.tools)})
+}
+
+func (s *Server) info(c *gin.Context) {
+	c.JSON(200, gin.H{"language": s.cfg.Language, "tools": len(s.tools)})
 }
 
 func (s *Server) chat(c *gin.Context) {

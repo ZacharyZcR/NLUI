@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useI18n } from "@/lib/i18n";
 import { useState, useRef, type KeyboardEvent } from "react";
 
 interface ChatInputProps {
@@ -10,6 +11,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -35,13 +37,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+        placeholder={t("chat.placeholder")}
         disabled={disabled}
         className="min-h-[44px] max-h-[160px] resize-none"
         rows={1}
       />
       <Button onClick={handleSend} disabled={disabled || !value.trim()} size="sm" className="h-[44px] px-6">
-        发送
+        {t("chat.send")}
       </Button>
     </div>
   );

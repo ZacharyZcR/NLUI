@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	Language string       `yaml:"language"`
 	LLM     LLMConfig    `yaml:"llm"`
 	Targets []Target     `yaml:"targets"`
 	Server  ServerConfig `yaml:"server"`
@@ -63,6 +64,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 9000
+	}
+	if cfg.Language == "" {
+		cfg.Language = "en"
 	}
 	return &cfg, nil
 }

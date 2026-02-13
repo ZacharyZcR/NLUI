@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
+import { useI18n } from "@/lib/i18n";
 import { chatStream } from "@/lib/api";
 import type { Message } from "@/lib/types";
 
@@ -18,6 +19,7 @@ function nextId() {
 }
 
 export function ChatMain({ conversationId, onConversationCreated }: ChatMainProps) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -121,7 +123,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           {
             id: nextId(),
             role: "assistant",
-            content: `连接失败: ${err instanceof Error ? err.message : "unknown"}`,
+            content: `${t("chat.error")}: ${err instanceof Error ? err.message : "unknown"}`,
             timestamp: new Date(),
           },
         ]);
@@ -130,7 +132,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         scrollToBottom();
       }
     },
-    [conversationId, onConversationCreated, scrollToBottom]
+    [conversationId, onConversationCreated, scrollToBottom, t]
   );
 
   return (
@@ -139,7 +141,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         <div className="space-y-4 max-w-3xl mx-auto">
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-[50vh] text-muted-foreground text-sm">
-              开始对话，Kelper 将通过工具操作你的系统
+              {t("chat.empty")}
             </div>
           )}
           {messages.map((msg) => (
@@ -148,7 +150,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           {loading && (
             <div className="flex justify-start">
               <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5">
-                <span className="text-sm text-muted-foreground animate-pulse">思考中...</span>
+                <span className="text-sm text-muted-foreground animate-pulse">{t("chat.thinking")}</span>
               </div>
             </div>
           )}
