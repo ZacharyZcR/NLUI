@@ -18,7 +18,7 @@ interface ConversationInfo {
 }
 
 export function ChatLayout() {
-  const { t, toggle } = useI18n();
+  const { t, theme, toggleLang, toggleTheme } = useI18n();
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<View>("chat");
@@ -28,9 +28,7 @@ export function ChatLayout() {
     try {
       const info = await GetInfo();
       setReady(!!info.ready);
-      if (!info.ready) {
-        setView("settings");
-      }
+      if (!info.ready) setView("settings");
     } catch {
       setView("settings");
     }
@@ -50,9 +48,7 @@ export function ChatLayout() {
     refresh();
   }, [checkReady, refresh]);
 
-  const handleNew = useCallback(() => {
-    setActiveId(null);
-  }, []);
+  const handleNew = useCallback(() => setActiveId(null), []);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -79,17 +75,6 @@ export function ChatLayout() {
 
   const toggleView = (target: View) => setView(view === target ? "chat" : target);
 
-  const navBtn = (key: View, label: string) => (
-    <Button
-      variant={view === key ? "secondary" : "ghost"}
-      size="sm"
-      className="text-xs h-8 px-2"
-      onClick={() => toggleView(key)}
-    >
-      {label}
-    </Button>
-  );
-
   return (
     <div className="flex h-screen bg-background">
       <ChatSidebar
@@ -99,33 +84,53 @@ export function ChatLayout() {
         onNew={handleNew}
         onDelete={handleDelete}
       />
-      <div className="flex flex-col flex-1">
-        <header className="flex items-center justify-between px-4 py-3 border-b bg-card/50">
-          <h1 className="text-sm font-semibold">{t("app.title")}</h1>
-          <div className="flex items-center gap-1">
-            {navBtn("targets", t("targets.btn"))}
-            {navBtn("tools", t("tools.btn"))}
-            {navBtn("settings", t("settings.btn"))}
-            <Button variant="ghost" size="sm" className="text-xs w-8 h-8" onClick={toggle}>
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Title bar — draggable for Wails window */}
+        <header className="wails-drag flex items-center justify-between px-5 h-12 border-b bg-card/60 backdrop-blur-sm shrink-0">
+          <h1 className="text-sm font-semibold tracking-wide select-none">
+            {t("app.title")}
+          </h1>
+          <nav className="wails-nodrag flex items-center gap-0.5">
+            {(["targets", "tools", "settings"] as const).map((key) => (
+              <Button
+                key={key}
+                variant={view === key ? "secondary" : "ghost"}
+                size="sm"
+                className="text-xs h-7 px-2.5"
+                onClick={() => toggleView(key)}
+              >
+                {t(`${key}.btn` as "targets.btn" | "tools.btn" | "settings.btn")}
+              </Button>
+            ))}
+            <div className="w-px h-4 bg-border mx-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs w-7 h-7"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+            >
+              {theme === "dark" ? "\u2600" : "\u263E"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs w-7 h-7 font-medium"
+              onClick={toggleLang}
+            >
               {t("lang.switch")}
             </Button>
-          </div>
+          </nav>
         </header>
 
         {view === "settings" ? (
-          <SettingsPanel
-            onSaved={handleSettingsSaved}
-            onClose={() => setView("chat")}
-          />
+          <SettingsPanel onSaved={handleSettingsSaved} onClose={() => setView("chat")} />
         ) : view === "targets" ? (
           <TargetsPanel onClose={() => setView("chat")} />
         ) : view === "tools" ? (
           <ToolsPanel onClose={() => setView("chat")} />
         ) : (
-          <ChatMain
-            conversationId={activeId}
-            onConversationCreated={handleConversationCreated}
-          />
+          <ChatMain conversationId={activeId} onConversationCreated={handleConversationCreated} />
         )}
       </div>
     </div>

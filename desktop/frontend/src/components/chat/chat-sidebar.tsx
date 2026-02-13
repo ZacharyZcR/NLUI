@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { useI18n } from "@/lib/i18n";
 
 interface ConversationInfo {
@@ -18,42 +17,69 @@ interface ChatSidebarProps {
   onDelete: (id: string) => void;
 }
 
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
+
 export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete }: ChatSidebarProps) {
   const { t } = useI18n();
 
   return (
-    <div className="flex flex-col h-full w-64 shrink-0 border-r bg-card">
-      <div className="p-4">
-        <Button onClick={onNew} className="w-full" variant="outline" size="sm">
+    <div className="flex flex-col h-full w-56 shrink-0 border-r bg-card/80">
+      <div className="wails-drag p-3 pb-2">
+        <Button
+          onClick={onNew}
+          className="wails-nodrag w-full justify-center"
+          variant="outline"
+          size="sm"
+        >
           {t("sidebar.new")}
         </Button>
       </div>
-      <Separator />
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="px-2 pb-2 space-y-0.5">
           {conversations.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8">{t("sidebar.empty")}</p>
+            <p className="text-xs text-muted-foreground text-center py-10 opacity-50">
+              {t("sidebar.empty")}
+            </p>
           )}
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              className={`group flex items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors ${
-                activeId === conv.id ? "bg-primary/10 text-primary" : "hover:bg-muted"
-              }`}
-              onClick={() => onSelect(conv.id)}
-            >
-              <span className="flex-1 truncate">{conv.title || t("sidebar.untitled")}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(conv.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs transition-opacity"
+          {conversations.map((conv) => {
+            const active = activeId === conv.id;
+            return (
+              <div
+                key={conv.id}
+                className={`group relative flex items-center rounded-lg px-3 py-2 text-[13px] cursor-pointer transition-colors ${
+                  active
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }`}
+                onClick={() => onSelect(conv.id)}
               >
-                &#10005;
-              </button>
-            </div>
-          ))}
+                <span className="flex-1 truncate">
+                  {conv.title || t("sidebar.untitled")}
+                </span>
+                <span className="text-[10px] opacity-40 ml-2 shrink-0 group-hover:hidden">
+                  {relativeTime(conv.updated_at)}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(conv.id);
+                  }}
+                  className="hidden group-hover:flex items-center justify-center w-5 h-5 shrink-0 ml-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-[11px]"
+                >
+                  &#10005;
+                </button>
+              </div>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>

@@ -41,6 +41,7 @@ const translations = {
     "targets.authType": "认证方式",
     "targets.addBtn": "添加目标",
     "targets.remove": "删除",
+    "targets.upload": "上传 OpenAPI 文件",
     "targets.nameUrlRequired": "名称和 URL 为必填项",
     "tools.title": "工具列表",
     "tools.btn": "工具",
@@ -89,6 +90,7 @@ const translations = {
     "targets.authType": "Auth Type",
     "targets.addBtn": "Add Target",
     "targets.remove": "Remove",
+    "targets.upload": "Upload OpenAPI File",
     "targets.nameUrlRequired": "Name and URL are required",
     "tools.title": "Tools",
     "tools.btn": "Tools",
@@ -137,6 +139,7 @@ const translations = {
     "targets.authType": "認証方式",
     "targets.addBtn": "ターゲット追加",
     "targets.remove": "削除",
+    "targets.upload": "OpenAPI ファイルをアップロード",
     "targets.nameUrlRequired": "名前と URL は必須です",
     "tools.title": "ツール一覧",
     "tools.btn": "ツール",
@@ -150,22 +153,44 @@ const translations = {
 export type Locale = keyof typeof translations;
 type Key = keyof (typeof translations)["en"];
 
+export type Theme = "light" | "dark";
+
 const langCycle: Locale[] = ["zh", "en", "ja"];
 
 interface I18nContextValue {
   locale: Locale;
+  theme: Theme;
   t: (key: Key) => string;
-  toggle: () => void;
+  toggleLang: () => void;
+  toggleTheme: () => void;
 }
 
 const I18nContext = createContext<I18nContextValue>({
   locale: "en",
+  theme: "dark",
   t: (key) => key,
-  toggle: () => {},
+  toggleLang: () => {},
+  toggleTheme: () => {},
 });
+
+function getInitialTheme(): Theme {
+  const saved = localStorage.getItem("kelper-theme") as Theme | null;
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+}
 
 export function I18nProvider({ initial, children }: { initial?: Locale; children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>(initial || "en");
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+
+  // Apply theme on mount and changes
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     const saved = localStorage.getItem("kelper-locale") as Locale | null;
@@ -181,7 +206,7 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
     [locale]
   );
 
-  const toggle = useCallback(() => {
+  const toggleLang = useCallback(() => {
     setLocale((prev) => {
       const idx = langCycle.indexOf(prev);
       const next = langCycle[(idx + 1) % langCycle.length];
@@ -190,8 +215,16 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
     });
   }, []);
 
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      localStorage.setItem("kelper-theme", next);
+      return next;
+    });
+  }, []);
+
   return (
-    <I18nContext.Provider value={{ locale, t, toggle }}>
+    <I18nContext.Provider value={{ locale, theme, t, toggleLang, toggleTheme }}>
       {children}
     </I18nContext.Provider>
   );

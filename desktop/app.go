@@ -286,6 +286,38 @@ func (a *App) GetCurrentConfig() map[string]interface{} {
 	}
 }
 
+// UploadSpec opens a file dialog for the user to pick a .json/.yaml OpenAPI spec.
+func (a *App) UploadSpec() map[string]interface{} {
+	path, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select OpenAPI Spec",
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "OpenAPI Spec (*.json;*.yaml;*.yml)", Pattern: "*.json;*.yaml;*.yml"},
+		},
+	})
+	if err != nil || path == "" {
+		return map[string]interface{}{"found": false, "error": "no file selected"}
+	}
+
+	doc, err := gateway.LoadSpec(path)
+	if err != nil {
+		return map[string]interface{}{"found": false, "error": err.Error()}
+	}
+
+	auth := gateway.AuthConfig{}
+	tools, _ := gateway.BuildTools(doc, "_upload", "", auth)
+	endpoints := make([]string, 0, len(tools))
+	for _, t := range tools {
+		endpoints = append(endpoints, t.Function.Name+": "+t.Function.Description)
+	}
+
+	return map[string]interface{}{
+		"found":     true,
+		"spec_url":  path,
+		"tools":     len(tools),
+		"endpoints": endpoints,
+	}
+}
+
 // ProbeTarget tries to discover an OpenAPI spec from a base URL.
 func (a *App) ProbeTarget(baseURL string) map[string]interface{} {
 	doc, specURL, err := gateway.DiscoverSpec(baseURL)
@@ -353,8 +385,8 @@ func (a *App) ListTargets() []map[string]interface{} {
 
 // AddTarget adds a new API target to the config and reinitializes.
 func (a *App) AddTarget(name, baseURL, spec, authType, authToken, description string) string {
-	if name == "" || baseURL == "" {
-		return "name and base_url are required"
+	if name == "" || (baseURL == "" && spec == "") {
+		return "name and (base_url or spec) are required"
 	}
 
 	cfg := &config.Config{}

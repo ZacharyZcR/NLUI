@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
@@ -55,12 +54,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
             streamIdRef.current = nextId();
             setMessages((prev) => [
               ...prev,
-              {
-                id: streamIdRef.current,
-                role: "assistant",
-                content: d.delta,
-                timestamp: new Date(),
-              },
+              { id: streamIdRef.current, role: "assistant", content: d.delta, timestamp: new Date() },
             ]);
           } else {
             setMessages((prev) => {
@@ -79,14 +73,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           const d = event.data as { name: string; arguments: string };
           setMessages((prev) => [
             ...prev,
-            {
-              id: nextId(),
-              role: "tool_call",
-              content: "",
-              toolName: d.name,
-              toolArgs: d.arguments,
-              timestamp: new Date(),
-            },
+            { id: nextId(), role: "tool_call", content: "", toolName: d.name, toolArgs: d.arguments, timestamp: new Date() },
           ]);
           scrollToBottom();
           break;
@@ -95,19 +82,12 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           const d = event.data as { name: string; result: string };
           setMessages((prev) => [
             ...prev,
-            {
-              id: nextId(),
-              role: "tool_result",
-              content: d.result,
-              toolName: d.name,
-              timestamp: new Date(),
-            },
+            { id: nextId(), role: "tool_result", content: d.result, toolName: d.name, timestamp: new Date() },
           ]);
           scrollToBottom();
           break;
         }
         case "content": {
-          // Final content event (full text) — if we already streamed, skip adding duplicate
           streamIdRef.current = "";
           scrollToBottom();
           break;
@@ -127,12 +107,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           const d = event.data as { error?: string };
           setMessages((prev) => [
             ...prev,
-            {
-              id: nextId(),
-              role: "assistant",
-              content: `Error: ${d.error || "unknown error"}`,
-              timestamp: new Date(),
-            },
+            { id: nextId(), role: "assistant", content: `Error: ${d.error || "unknown error"}`, timestamp: new Date() },
           ]);
           setLoading(false);
           scrollToBottom();
@@ -158,27 +133,18 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
 
   const handleSend = useCallback(
     async (text: string) => {
-      const userMsg: Message = {
-        id: nextId(),
-        role: "user",
-        content: text,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: "user", content: text, timestamp: new Date() },
+      ]);
       setLoading(true);
       scrollToBottom();
-
       try {
         await Chat(text, conversationId || "");
       } catch (err) {
         setMessages((prev) => [
           ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            content: `${t("chat.error")}: ${err instanceof Error ? err.message : "unknown"}`,
-            timestamp: new Date(),
-          },
+          { id: nextId(), role: "assistant", content: `${t("chat.error")}: ${err instanceof Error ? err.message : "unknown"}`, timestamp: new Date() },
         ]);
         setLoading(false);
       }
@@ -188,44 +154,53 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
 
   return (
     <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4 max-w-3xl mx-auto">
+      <ScrollArea className="flex-1 px-4 py-3">
+        <div className="space-y-3 max-w-3xl mx-auto">
           {messages.length === 0 && (
-            <div className="flex items-center justify-center h-[50vh] text-muted-foreground text-sm">
-              {t("chat.empty")}
+            <div className="flex flex-col items-center justify-center h-[50vh] gap-3 select-none">
+              <div className="text-4xl opacity-15">K</div>
+              <p className="text-sm text-muted-foreground/60">{t("chat.empty")}</p>
             </div>
           )}
           {messages.map((msg) => (
             <ChatMessage key={msg.id} message={msg} />
           ))}
+
+          {/* Dangerous op confirmation */}
           {pendingConfirm && (
-            <Card className="border-destructive/50 bg-destructive/5 px-4 py-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 space-y-3">
+              <div className="flex items-center gap-2">
                 <span className="text-destructive text-sm">&#9888;</span>
                 <span className="text-sm font-medium">{t("confirm.title")}</span>
               </div>
-              <div className="mb-3">
-                <Badge variant="outline" className="text-xs font-mono border-destructive/30 text-destructive">
+              <div>
+                <Badge variant="outline" className="text-[11px] font-mono border-destructive/25 text-destructive px-1.5 py-0">
                   {pendingConfirm.name}
                 </Badge>
-                <pre className="mt-2 text-xs text-muted-foreground font-mono overflow-x-auto whitespace-pre-wrap max-h-32">
+                <pre className="mt-2 text-xs text-muted-foreground font-mono overflow-x-auto whitespace-pre-wrap max-h-32 leading-relaxed">
                   {formatJSON(pendingConfirm.arguments)}
                 </pre>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="destructive" onClick={() => handleConfirm(true)}>
+                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleConfirm(true)}>
                   {t("confirm.approve")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleConfirm(false)}>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleConfirm(false)}>
                   {t("confirm.reject")}
                 </Button>
               </div>
-            </Card>
+            </div>
           )}
+
+          {/* Thinking indicator */}
           {loading && !pendingConfirm && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5">
-                <span className="text-sm text-muted-foreground animate-pulse">{t("chat.thinking")}</span>
+              <div className="rounded-2xl rounded-bl-md bg-muted/80 px-5 py-3 shadow-sm">
+                <div className="flex items-center gap-1.5 text-muted-foreground h-4">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
               </div>
             </div>
           )}

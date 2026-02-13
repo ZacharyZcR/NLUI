@@ -61,3 +61,7 @@ export function RemoveTarget(arg1) {
 export function SaveLLMConfig(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveLLMConfig'](arg1, arg2, arg3);
 }
+
+export function UploadSpec() {
+  return window['go']['main']['App']['UploadSpec']();
+}

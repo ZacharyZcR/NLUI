@@ -100,35 +100,30 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
 
   return (
     <div className="flex flex-col flex-1 h-full">
-      <div className="flex items-center justify-between px-6 py-3 border-b bg-muted/30">
-        <h2 className="text-sm font-semibold">{t("settings.title")}</h2>
-        <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>
-          {t("settings.close")}
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-1 p-6">
-        <div className="max-w-xl mx-auto space-y-6">
+      <ScrollArea className="flex-1 px-6 py-5">
+        <div className="max-w-lg mx-auto space-y-5">
 
           {/* Auto-detected providers */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">{t("settings.detected")}</span>
-              <Button variant="outline" size="xs" onClick={scan} disabled={scanning}>
+          <section>
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("settings.detected")}
+              </h3>
+              <Button variant="ghost" size="xs" onClick={scan} disabled={scanning}>
                 {scanning ? t("settings.scanning") : t("settings.rescan")}
               </Button>
             </div>
             {providers.length === 0 && !scanning && (
-              <p className="text-xs text-muted-foreground py-3 text-center">{t("settings.noProviders")}</p>
+              <p className="text-xs text-muted-foreground/50 py-4 text-center">{t("settings.noProviders")}</p>
             )}
             <div className="space-y-2">
               {providers.map((p) => (
                 <Card key={p.name} className="px-4 py-3 gap-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-emerald-500 text-xs">&#9679;</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       <span className="text-sm font-medium">{p.name}</span>
-                      <span className="text-xs text-muted-foreground">{p.api_base}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{p.api_base}</span>
                     </div>
                     <Button size="xs" variant="outline" onClick={() => handleUseProvider(p)}>
                       {t("settings.use")}
@@ -136,19 +131,22 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {p.models.slice(0, 6).map((m) => (
-                      <Badge key={m} variant="secondary" className="text-xs font-mono">{m}</Badge>
+                      <Badge key={m} variant="secondary" className="text-[11px] font-mono">{m}</Badge>
                     ))}
                     {p.models.length > 6 && (
-                      <Badge variant="secondary" className="text-xs">+{p.models.length - 6}</Badge>
+                      <Badge variant="secondary" className="text-[11px]">+{p.models.length - 6}</Badge>
                     )}
                   </div>
                 </Card>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Manual LLM config */}
-          <div className="space-y-3">
+          {/* Manual config */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t("settings.manual")}
+            </h3>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">API Base</label>
               <div className="flex gap-2">
@@ -168,7 +166,14 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-1.5">
                     {models.map((m) => (
-                      <Badge key={m} variant={m === model ? "default" : "outline"} className="text-xs font-mono cursor-pointer" onClick={() => setModel(m)}>{m}</Badge>
+                      <Badge
+                        key={m}
+                        variant={m === model ? "default" : "outline"}
+                        className="text-[11px] font-mono cursor-pointer"
+                        onClick={() => setModel(m)}
+                      >
+                        {m}
+                      </Badge>
                     ))}
                   </div>
                   <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="model name" />
@@ -177,13 +182,12 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                 <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="qwen2.5:7b / gpt-4o / ..." />
               )}
             </div>
-          </div>
+          </section>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button className="w-full" onClick={handleSaveLLM} disabled={saving || !apiBase || !model}>
             {saving ? t("settings.saving") : t("settings.save")}
           </Button>
-
         </div>
       </ScrollArea>
     </div>

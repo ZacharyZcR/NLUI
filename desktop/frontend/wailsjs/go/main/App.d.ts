@@ -31,3 +31,5 @@ export function ProbeTarget(arg1:string):Promise<Record<string, any>>;
 export function RemoveTarget(arg1:string):Promise<string>;
 
 export function SaveLLMConfig(arg1:string,arg2:string,arg3:string):Promise<string>;
+
+export function UploadSpec():Promise<Record<string, any>>;
