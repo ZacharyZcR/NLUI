@@ -1,0 +1,8 @@
+services:
+  nlui:
+    build: .
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./nlui.yaml:/etc/nlui/nlui.yaml:ro
+    restart: unless-stopped

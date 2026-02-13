@@ -1,0 +1,6 @@
+build/bin
+node_modules
+frontend/dist
+desktop/desktop.exe
+*.syso
+*.syso.bak

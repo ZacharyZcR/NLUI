@@ -1,0 +1,38 @@
+{
+  "name": "@nlui/client",
+  "version": "0.1.0",
+  "description": "NLUI JavaScript/TypeScript SDK",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup nlui-client.ts --format cjs,esm --dts",
+    "dev": "tsup nlui-client.ts --format cjs,esm --dts --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "nlui",
+    "natural-language",
+    "ai",
+    "llm",
+    "chat",
+    "sdk"
+  ],
+  "author": "ZacharyZcR",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

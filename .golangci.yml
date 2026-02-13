@@ -1,0 +1,46 @@
+version: "2"
+
+run:
+  timeout: 3m
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gocritic
+    - misspell
+
+  settings:
+    gocritic:
+      enabled-checks:
+        - dupImport
+        - nestingReduce
+        - truncateCmp
+      disabled-checks:
+        - exitAfterDefer
+    misspell:
+      locale: US
+
+  exclusions:
+    rules:
+      - linters: [errcheck]
+        source: "fmt\\.(Fprintf|Sscanf)"
+      - linters: [errcheck]
+        source: "os\\.(MkdirAll|Remove)"
+      - linters: [errcheck]
+        source: "io\\.Copy"
+      - linters: [errcheck]
+        source: "\\.Close\\(\\)"
+      - linters: [errcheck]
+        source: "[rR]and\\.Read"
+      - linters: [errcheck]
+        source: "gateway\\.SaveToolSet"
+    paths:
+      - desktop
+      - sdk/examples
+      - third_party

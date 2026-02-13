@@ -1,0 +1,58 @@
+name: "Feature Request / 功能建议"
+description: "Suggest a new feature / 提出新功能建议"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We'd love to hear your ideas! / 期待你的想法！
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "Component / 组件"
+      description: "Which part does this relate to? / 这与哪个部分相关？"
+      options:
+        - "Go Server (backend)"
+        - "@nlui/engine (TS engine)"
+        - "@nlui/react-ui"
+        - "@nlui/vue-ui"
+        - "@nlui/components (Web Components)"
+        - "Desktop (Wails)"
+        - "SDK"
+        - "New component / 新组件"
+        - "Other / 其他"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem / 问题场景"
+      description: "What problem does this solve? / 这个功能解决什么问题？"
+      placeholder: |
+        I'm always frustrated when...
+        当我……的时候总是很困扰
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution / 建议方案"
+      description: "How should it work? / 你希望它如何工作？"
+      placeholder: |
+        It would be great if...
+        如果能……就好了
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered / 替代方案"
+      description: "Any other approaches you've considered? / 考虑过其他方案吗？"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional Context / 补充信息"
+      description: "Screenshots, links, examples, etc. / 截图、链接、示例等"

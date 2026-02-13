@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "target": "jsonplaceholder",
+  "base_url": "https://jsonplaceholder.typicode.com",
+  "auth": {"type": "", "header_name": "", "token": ""},
+  "endpoints": [
+    {
+      "name": "jsonplaceholder__get_posts",
+      "description": "List all posts. Optionally filter by userId.",
+      "method": "GET",
+      "path": "/posts",
+      "group": "Posts",
+      "params": [{"name": "userId", "in": "query", "type": "integer", "required": false}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {"type": "integer", "description": "Filter posts by user ID"}
+        }
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_post",
+      "description": "Get a single post by ID.",
+      "method": "GET",
+      "path": "/posts/{id}",
+      "group": "Posts",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Post ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__create_post",
+      "description": "Create a new post (simulated, returns the created object with an ID).",
+      "method": "POST",
+      "path": "/posts",
+      "group": "Posts",
+      "params": [],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string", "description": "Post title"},
+          "body": {"type": "string", "description": "Post body content"},
+          "userId": {"type": "integer", "description": "Author user ID"}
+        },
+        "required": ["title", "body", "userId"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__update_post",
+      "description": "Update an existing post by ID (full replacement).",
+      "method": "PUT",
+      "path": "/posts/{id}",
+      "group": "Posts",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Post ID"},
+          "title": {"type": "string", "description": "Post title"},
+          "body": {"type": "string", "description": "Post body content"},
+          "userId": {"type": "integer", "description": "Author user ID"}
+        },
+        "required": ["id", "title", "body", "userId"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__patch_post",
+      "description": "Partially update a post by ID.",
+      "method": "PATCH",
+      "path": "/posts/{id}",
+      "group": "Posts",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Post ID"},
+          "title": {"type": "string", "description": "Post title"},
+          "body": {"type": "string", "description": "Post body content"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__delete_post",
+      "description": "Delete a post by ID.",
+      "method": "DELETE",
+      "path": "/posts/{id}",
+      "group": "Posts",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Post ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_post_comments",
+      "description": "Get all comments for a specific post.",
+      "method": "GET",
+      "path": "/posts/{id}/comments",
+      "group": "Comments",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Post ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_comments",
+      "description": "List all comments. Optionally filter by postId.",
+      "method": "GET",
+      "path": "/comments",
+      "group": "Comments",
+      "params": [{"name": "postId", "in": "query", "type": "integer", "required": false}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "postId": {"type": "integer", "description": "Filter comments by post ID"}
+        }
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_users",
+      "description": "List all users.",
+      "method": "GET",
+      "path": "/users",
+      "group": "Users",
+      "params": [],
+      "has_body": false,
+      "parameters": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "jsonplaceholder__get_user",
+      "description": "Get a single user by ID.",
+      "method": "GET",
+      "path": "/users/{id}",
+      "group": "Users",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "User ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_todos",
+      "description": "List all todos. Optionally filter by userId or completed status.",
+      "method": "GET",
+      "path": "/todos",
+      "group": "Todos",
+      "params": [
+        {"name": "userId", "in": "query", "type": "integer", "required": false},
+        {"name": "completed", "in": "query", "type": "boolean", "required": false}
+      ],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {"type": "integer", "description": "Filter by user ID"},
+          "completed": {"type": "boolean", "description": "Filter by completion status"}
+        }
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_todo",
+      "description": "Get a single todo by ID.",
+      "method": "GET",
+      "path": "/todos/{id}",
+      "group": "Todos",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Todo ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_albums",
+      "description": "List all albums. Optionally filter by userId.",
+      "method": "GET",
+      "path": "/albums",
+      "group": "Albums",
+      "params": [{"name": "userId", "in": "query", "type": "integer", "required": false}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "userId": {"type": "integer", "description": "Filter by user ID"}
+        }
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_album",
+      "description": "Get a single album by ID.",
+      "method": "GET",
+      "path": "/albums/{id}",
+      "group": "Albums",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Album ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_album_photos",
+      "description": "Get all photos in an album.",
+      "method": "GET",
+      "path": "/albums/{id}/photos",
+      "group": "Photos",
+      "params": [{"name": "id", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Album ID"}
+        },
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "jsonplaceholder__get_photos",
+      "description": "List all photos. Optionally filter by albumId.",
+      "method": "GET",
+      "path": "/photos",
+      "group": "Photos",
+      "params": [{"name": "albumId", "in": "query", "type": "integer", "required": false}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "albumId": {"type": "integer", "description": "Filter by album ID"}
+        }
+      }
+    }
+  ]
+}

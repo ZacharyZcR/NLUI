@@ -1,0 +1,52 @@
+{
+  "openapi": "3.0.0",
+  "info": { "title": "Pet Store", "version": "1.0" },
+  "paths": {
+    "/api/pets": {
+      "get": {
+        "operationId": "listPets",
+        "summary": "获取宠物列表",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer" }, "description": "返回数量上限" },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["available", "sold"] }, "description": "按状态过滤" }
+        ]
+      },
+      "post": {
+        "operationId": "createPet",
+        "summary": "创建宠物",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "宠物名称" },
+                  "species": { "type": "string", "description": "物种" },
+                  "age": { "type": "integer", "description": "年龄" }
+                },
+                "required": ["name", "species"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pets/{id}": {
+      "get": {
+        "operationId": "getPet",
+        "summary": "获取宠物详情",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "宠物ID" }
+        ]
+      },
+      "delete": {
+        "operationId": "deletePet",
+        "summary": "删除宠物",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "宠物ID" }
+        ]
+      }
+    }
+  }
+}

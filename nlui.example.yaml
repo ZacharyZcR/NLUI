@@ -1,0 +1,31 @@
+language: en    # zh, en, ja
+
+llm:
+  api_base: http://localhost:11434/v1
+  api_key: ""
+  model: qwen2.5:7b
+  max_context_tokens: 0  # 0 = unlimited; e.g. 8000 for 8k context window
+
+targets:
+  # Mode 1: specify spec path explicitly
+  # - name: my-backend
+  #   base_url: http://localhost:8080
+  #   spec: http://localhost:8080/swagger/doc.json
+  #   auth:
+  #     type: bearer
+
+  # Mode 2: auto-discover (just give base_url, NLUI probes common paths)
+  - name: my-backend
+    base_url: http://localhost:8080
+    auth:
+      type: bearer
+      token: ""
+    description: "主业务后端"
+
+mcp:
+  server:
+    sse_port: 0
+  clients: []
+
+server:
+  port: 9000

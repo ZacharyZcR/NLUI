@@ -1,0 +1,42 @@
+version: 2
+
+updates:
+  # Main Go module
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps(go):"
+
+  # Desktop Go module
+  - package-ecosystem: gomod
+    directory: /desktop
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps(desktop):"
+
+  # SDK Go module
+  - package-ecosystem: gomod
+    directory: /sdk/go
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps(sdk-go):"
+
+  # SDK Engine (npm)
+  - package-ecosystem: npm
+    directory: /sdk/engine
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps(engine):"
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps(ci):"

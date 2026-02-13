@@ -1,0 +1,1155 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/ZacharyZcR/NLUI/bootstrap"
+	"github.com/ZacharyZcR/NLUI/config"
+	"github.com/ZacharyZcR/NLUI/core/conversation"
+	"github.com/ZacharyZcR/NLUI/core/llm"
+	"github.com/ZacharyZcR/NLUI/engine"
+	"github.com/ZacharyZcR/NLUI/gateway"
+	"github.com/ZacharyZcR/NLUI/mcp"
+	"github.com/ZacharyZcR/NLUI/presets"
+	"github.com/ZacharyZcR/NLUI/service"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+type App struct {
+	ctx              context.Context
+	svc              *service.Service
+	engine           *engine.Engine
+	convMgr          *conversation.Manager // survives reinit
+	language         string
+	ready            bool
+	confirmCh        chan bool
+	mcpClients       map[string]*mcp.Client
+	chatCancel       context.CancelFunc // for stopping active chat
+	chatCancelMu     sync.Mutex
+	targetDisplayMap map[string]string // sanitized name -> display name
+	router           *bootstrap.Router
+	logFile          *os.File
+}
+
+type ConversationInfo struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type ProviderInfo struct {
+	Name    string   `json:"name"`
+	APIBase string   `json:"api_base"`
+	Models  []string `json:"models"`
+}
+
+func (a *App) configPath() string {
+	p, _ := config.GlobalConfigPath()
+	return p
+}
+
+func (a *App) initLogger() {
+	dir, err := config.GlobalDir()
+	if err != nil {
+		return
+	}
+	logPath := filepath.Join(dir, "nlui.log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return
+	}
+	a.logFile = f
+	log.SetOutput(io.MultiWriter(os.Stderr, f))
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
+// GetLogPath returns the log file path for the frontend to display.
+func (a *App) GetLogPath() string {
+	dir, err := config.GlobalDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "nlui.log")
+}
+
+func (a *App) domReady(ctx context.Context) {
+	log.Println("DOM ready")
+}
+
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	a.initLogger()
+	log.Println("NLUI desktop starting")
+
+	// One-time migration: copy local config to global dir if needed
+	globalPath := a.configPath()
+	if globalPath != "" {
+		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
+			data, readErr := os.ReadFile("nlui.yaml")
+			if readErr != nil {
+				data, readErr = os.ReadFile("kelper.yaml") // legacy fallback
+			}
+			if readErr == nil {
+				os.WriteFile(globalPath, data, 0600)
+			}
+		}
+	}
+
+	a.svc = service.New(globalPath)
+
+	// Create conversation manager early so history is available before full init
+	convDir := ""
+	if dir, err := config.GlobalDir(); err == nil {
+		convDir = filepath.Join(dir, "conversations")
+	}
+	a.convMgr = conversation.NewManager(convDir)
+
+	// Async: don't block Wails UI thread — frontend checks ready state
+	go a.initialize()
+}
+
+func (a *App) initialize() {
+	log.Println("=== initialize() called ===")
+	a.ready = false
+
+	// Close previous MCP clients if reinitializing
+	for _, c := range a.mcpClients {
+		c.Close()
+	}
+	a.mcpClients = nil
+
+	cfg, err := config.Load(a.configPath())
+	if err != nil {
+		log.Printf("load config: %v", err)
+		return
+	}
+
+	if cfg.LLM.APIBase == "" || cfg.LLM.Model == "" {
+		log.Println("LLM not configured")
+		return
+	}
+
+	log.Printf("Loading %d targets", len(cfg.Targets))
+	allTools, allEndpoints := bootstrap.DiscoverTools(cfg.Targets, nil)
+	log.Printf("Discovered %d tools from targets", len(allTools))
+
+	// Build target display name mapping from endpoints
+	a.targetDisplayMap = make(map[string]string)
+	for _, ep := range allEndpoints {
+		if ep.TargetDisplayName != "" && ep.TargetName != "" {
+			a.targetDisplayMap[ep.TargetName] = ep.TargetDisplayName
+		}
+	}
+
+	mcpClients, mcpTools := bootstrap.InitMCPClients(cfg.MCP.Clients)
+	allTools = append(allTools, mcpTools...)
+	a.mcpClients = mcpClients
+
+	caller := gateway.NewCaller(allEndpoints)
+	caller.OnAuthChanged = func(configName, token string) {
+		if err := a.svc.SaveTargetAuth(configName, token); err != nil {
+			log.Printf("persist auth token: %v", err)
+		}
+	}
+	router := &bootstrap.Router{
+		HttpCaller: caller,
+		McpClients: mcpClients,
+	}
+	a.router = router
+
+	llmClient := llm.NewAutoClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model, cfg.Proxy, cfg.LLM.IsStream())
+	a.language = cfg.Language
+
+	convDir := ""
+	if dir, err := config.GlobalDir(); err == nil {
+		convDir = filepath.Join(dir, "conversations")
+	}
+	if a.convMgr == nil {
+		a.convMgr = conversation.NewManager(convDir)
+	}
+
+	a.confirmCh = make(chan bool, 1)
+
+	eng := engine.New(engine.Config{
+		LLM:          llmClient,
+		Executor:     router,
+		Tools:        allTools,
+		SystemPrompt: bootstrap.BuildSystemPrompt(cfg.Language, cfg.Targets, allTools),
+		MaxCtxTokens: cfg.LLM.MaxCtxTokens,
+		ConvMgr:      a.convMgr,
+	})
+	a.engine = eng
+	a.ready = true
+
+	log.Printf("NLUI ready: %d tools", len(allTools))
+
+	// Notify frontend that tools have been updated
+	wailsRuntime.EventsEmit(a.ctx, "tools-updated", map[string]interface{}{
+		"count": len(allTools),
+	})
+}
+
+// ProbeProviders auto-detects local LLM services and lists cloud presets.
+func (a *App) ProbeProviders() []ProviderInfo {
+	// Cloud presets from service
+	presets := service.ProviderPresets()
+	result := make([]ProviderInfo, len(presets))
+	for i, p := range presets {
+		result[i] = ProviderInfo{Name: p.Name, APIBase: p.APIBase, Models: p.Models}
+	}
+
+	// Auto-detect local services
+	type probe struct {
+		name    string
+		apiBase string
+	}
+	locals := []probe{
+		{"Ollama", "http://localhost:11434/v1"},
+		{"LM Studio", "http://localhost:1234/v1"},
+	}
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	for _, t := range locals {
+		models := fetchModels(client, t.apiBase+"/models")
+		if len(models) > 0 {
+			result = append([]ProviderInfo{{
+				Name:    t.name,
+				APIBase: t.apiBase,
+				Models:  models,
+			}}, result...)
+		}
+	}
+	return result
+}
+
+// FetchModels queries /v1/models for any OpenAI-compatible endpoint.
+func (a *App) FetchModels(apiBase, apiKey string) []string {
+	client := a.proxyHTTPClient(5 * time.Second)
+	u := strings.TrimRight(apiBase, "/") + "/models"
+
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil
+	}
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	return parseModelsResponse(resp)
+}
+
+// proxyHTTPClient returns an http.Client that uses the configured proxy (if any).
+func (a *App) proxyHTTPClient(timeout time.Duration) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if cfg, err := config.Load(a.configPath()); err == nil && cfg.Proxy != "" {
+		if proxyURL, err := url.Parse(cfg.Proxy); err == nil {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
+	return &http.Client{Timeout: timeout, Transport: transport}
+}
+
+func fetchModels(client *http.Client, url string) []string {
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	return parseModelsResponse(resp)
+}
+
+func parseModelsResponse(resp *http.Response) []string {
+	if resp.StatusCode != 200 {
+		return nil
+	}
+	var body struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&body) != nil {
+		return nil
+	}
+	var models []string
+	for _, m := range body.Data {
+		models = append(models, m.ID)
+	}
+	return models
+}
+
+// SaveLLMConfig writes LLM settings to nlui.yaml and reinitializes.
+func (a *App) SaveLLMConfig(apiBase, apiKey, model string) string {
+	if err := a.svc.SaveLLMConfig(apiBase, apiKey, model); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+// GetCurrentConfig returns the current LLM configuration.
+func (a *App) GetCurrentConfig() map[string]interface{} {
+	cfg, err := a.svc.LoadConfig()
+	if err != nil {
+		return map[string]interface{}{"exists": false}
+	}
+	toolCount := 0
+	if a.engine != nil {
+		toolCount = len(a.engine.Tools())
+	}
+	return map[string]interface{}{
+		"exists":   true,
+		"api_base": cfg.LLM.APIBase,
+		"api_key":  cfg.LLM.APIKey, // Desktop app: return full key for editing
+		"model":    cfg.LLM.Model,
+		"language": cfg.Language,
+		"proxy":    cfg.Proxy,
+		"stream":   cfg.LLM.IsStream(),
+		"ready":    a.ready,
+		"tools":    toolCount,
+	}
+}
+
+// TestProxy tests connectivity through the given proxy by hitting https://www.google.com.
+func (a *App) TestProxy(proxy string) string {
+	if proxy == "" {
+		return "no proxy configured"
+	}
+	proxyURL, err := url.Parse(proxy)
+	if err != nil {
+		return "invalid proxy URL: " + err.Error()
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = http.ProxyURL(proxyURL)
+	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
+
+	resp, err := client.Get("https://www.google.com")
+	if err != nil {
+		return err.Error()
+	}
+	resp.Body.Close()
+	return ""
+}
+
+// SaveProxy writes the proxy setting to nlui.yaml (no reinit needed).
+func (a *App) SaveProxy(proxy string) string {
+	if err := a.svc.SaveProxy(proxy); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+func (a *App) SaveLanguage(lang string) string {
+	if err := a.svc.SaveLanguage(lang); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+func (a *App) SaveStream(stream bool) string {
+	if err := a.svc.SaveStream(stream); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+// UploadSpec opens a file dialog for the user to pick a .json/.yaml OpenAPI spec.
+func (a *App) UploadSpec() map[string]interface{} {
+	path, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select OpenAPI Spec",
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "OpenAPI Spec (*.json;*.yaml;*.yml)", Pattern: "*.json;*.yaml;*.yml"},
+		},
+	})
+	if err != nil || path == "" {
+		return map[string]interface{}{"found": false, "error": "no file selected"}
+	}
+
+	r := service.ValidateSpec(path)
+	if !r.Found {
+		return map[string]interface{}{"found": false, "error": r.Error}
+	}
+	return map[string]interface{}{
+		"found":     true,
+		"spec_url":  r.SpecURL,
+		"tools":     r.ToolCount,
+		"endpoints": r.Endpoints,
+	}
+}
+
+// UploadToolSet opens a file dialog for the user to pick a ToolSet JSON file.
+func (a *App) UploadToolSet() map[string]interface{} {
+	path, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select ToolSet JSON",
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "ToolSet JSON (*.json)", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		return map[string]interface{}{"found": false, "error": "no file selected"}
+	}
+
+	r := service.ValidateToolSet(path)
+	if !r.Found {
+		return map[string]interface{}{"found": false, "error": r.Error}
+	}
+	return map[string]interface{}{
+		"found":      true,
+		"tools_path": r.ToolsPath,
+		"tools":      r.ToolCount,
+		"endpoints":  r.Endpoints,
+	}
+}
+
+// ListPresets returns available built-in presets.
+func (a *App) ListPresets() []presets.Info {
+	return presets.List()
+}
+
+// ImportPreset imports a built-in preset as a target.
+func (a *App) ImportPreset(name string) string {
+	if err := a.svc.ImportPreset(name); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+// ProbeTarget tries to discover an OpenAPI spec from a base URL.
+func (a *App) ProbeTarget(baseURL string) map[string]interface{} {
+	r := service.ProbeTarget(baseURL)
+	if !r.Found {
+		return map[string]interface{}{"found": false, "error": r.Error}
+	}
+	return map[string]interface{}{
+		"found":     true,
+		"spec_url":  r.SpecURL,
+		"tools":     r.ToolCount,
+		"endpoints": r.Endpoints,
+	}
+}
+
+// ListTargets returns the configured API targets with tool counts.
+func (a *App) ListTargets() []map[string]interface{} {
+	targets, err := a.svc.ListTargets()
+	if err != nil {
+		return []map[string]interface{}{}
+	}
+
+	result := make([]map[string]interface{}, 0, len(targets))
+	for _, t := range targets {
+		result = append(result, map[string]interface{}{
+			"name":        t.Name,
+			"base_url":    t.BaseURL,
+			"spec":        t.Spec,
+			"auth_type":   t.AuthType,
+			"description": t.Description,
+			"tools":       t.ToolCount,
+		})
+	}
+	return result
+}
+
+// AddTarget adds a new API target to the config and reinitializes.
+func (a *App) AddTarget(name, baseURL, spec, tools, authType, authHeaderName, authToken, description string) string {
+	if err := a.svc.AddTarget(name, baseURL, spec, tools, authType, authHeaderName, authToken, description); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+// UpdateTarget updates an existing target's config and reinitializes.
+func (a *App) UpdateTarget(name, baseURL, authType, authHeaderName, authToken, description string) string {
+	if err := a.svc.UpdateTarget(name, baseURL, authType, authHeaderName, authToken, description); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+// RemoveTarget removes an API target by name and reinitializes.
+func (a *App) RemoveTarget(name string) string {
+	if err := a.svc.RemoveTarget(name); err != nil {
+		return err.Error()
+	}
+	a.initialize()
+	return ""
+}
+
+func (a *App) Chat(message, conversationID string) string {
+	if !a.ready {
+		log.Println("Chat error: not initialized")
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": "error",
+			"data": map[string]string{"error": "not initialized, check nlui.yaml"},
+		})
+		return ""
+	}
+
+	// Create cancellable context for this chat
+	chatCtx, cancel := context.WithCancel(a.ctx)
+	a.chatCancelMu.Lock()
+	a.chatCancel = cancel
+	a.chatCancelMu.Unlock()
+	defer func() {
+		a.chatCancelMu.Lock()
+		a.chatCancel = nil
+		a.chatCancelMu.Unlock()
+	}()
+
+	confirm := func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	}
+
+	var lastUsage interface{}
+
+	convID, err := a.engine.Chat(chatCtx, conversationID, message, "", confirm, func(event engine.Event) {
+		if event.Type == "usage" {
+			lastUsage = event.Data
+			return
+		}
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": event.Type,
+			"data": event.Data,
+		})
+	})
+
+	if err != nil {
+		log.Printf("Chat error: %v", err)
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": "error",
+			"data": map[string]string{"error": err.Error()},
+		})
+	}
+
+	doneData := map[string]interface{}{
+		"conversation_id": convID,
+	}
+	if lastUsage != nil {
+		doneData["usage"] = lastUsage
+	}
+
+	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+		"type": "done",
+		"data": doneData,
+	})
+
+	return convID
+}
+
+func (a *App) ListConversations() []ConversationInfo {
+	if a.convMgr == nil {
+		return []ConversationInfo{}
+	}
+	convs := a.convMgr.List()
+	result := make([]ConversationInfo, 0, len(convs))
+	for _, c := range convs {
+		result = append(result, ConversationInfo{
+			ID:        c.ID,
+			Title:     c.Title,
+			CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: c.UpdatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	return result
+}
+
+func (a *App) DeleteConversation(id string) {
+	if a.convMgr != nil {
+		a.convMgr.Delete(id)
+	}
+}
+
+// CreateEmptyConversation creates a new conversation without any messages.
+// Returns the conversation ID.
+func (a *App) CreateEmptyConversation() string {
+	if !a.ready {
+		return ""
+	}
+	conv := a.engine.CreateConversation("")
+	return conv.ID
+}
+
+// ChatMessage is a frontend-friendly message format.
+type ChatMessage struct {
+	ID       string `json:"id"`
+	Role     string `json:"role"`
+	Content  string `json:"content"`
+	ToolName string `json:"tool_name,omitempty"`
+	ToolArgs string `json:"tool_args,omitempty"`
+}
+
+// GetConversationMessages returns messages for a conversation in frontend format.
+func (a *App) GetConversationMessages(id string) []ChatMessage {
+	if a.convMgr == nil || id == "" {
+		return []ChatMessage{}
+	}
+	conv := a.convMgr.Get(id)
+	if conv == nil {
+		return []ChatMessage{}
+	}
+	var result []ChatMessage
+	seq := 0
+	for _, m := range conv.Messages {
+		switch m.Role {
+		case "system":
+			continue
+		case "user":
+			seq++
+			result = append(result, ChatMessage{
+				ID:      fmt.Sprintf("hist-%d", seq),
+				Role:    "user",
+				Content: m.Content,
+			})
+		case "assistant":
+			if m.Content != "" {
+				seq++
+				result = append(result, ChatMessage{
+					ID:      fmt.Sprintf("hist-%d", seq),
+					Role:    "assistant",
+					Content: m.Content,
+				})
+			}
+			for _, tc := range m.ToolCalls {
+				seq++
+				result = append(result, ChatMessage{
+					ID:       fmt.Sprintf("hist-%d", seq),
+					Role:     "tool_call",
+					ToolName: tc.Function.Name,
+					ToolArgs: tc.Function.Arguments,
+				})
+			}
+		case "tool":
+			seq++
+			result = append(result, ChatMessage{
+				ID:       fmt.Sprintf("hist-%d", seq),
+				Role:     "tool_result",
+				Content:  m.Content,
+				ToolName: m.ToolCallID,
+			})
+		}
+	}
+	return result
+}
+
+// ConfirmTool is called by the frontend to approve/reject a dangerous tool call.
+func (a *App) ConfirmTool(approved bool) {
+	select {
+	case a.confirmCh <- approved:
+	default:
+	}
+}
+
+// ToolInfo describes a single tool for the frontend.
+type ToolInfo struct {
+	TargetName  string      `json:"target_name"`
+	Group       string      `json:"group"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Parameters  interface{} `json:"parameters"`
+}
+
+// ListTools returns all loaded tools with target and group info.
+func (a *App) ListTools() []ToolInfo {
+	if a.engine == nil {
+		return []ToolInfo{}
+	}
+	result := make([]ToolInfo, 0)
+	for _, t := range a.engine.Tools() {
+		targetName := ""
+		funcName := t.Function.Name
+		if parts := strings.SplitN(t.Function.Name, "__", 2); len(parts) == 2 {
+			targetName = parts[0]
+			funcName = parts[1]
+		}
+
+		// Use display name if available
+		displayName := targetName
+		if a.targetDisplayMap != nil {
+			if dn, ok := a.targetDisplayMap[targetName]; ok {
+				displayName = dn
+			}
+		}
+
+		// Get group from endpoint metadata
+		group := ""
+		if a.router != nil {
+			group = a.router.HttpCaller.ToolGroup(t.Function.Name)
+		}
+
+		result = append(result, ToolInfo{
+			TargetName:  displayName,
+			Group:       group,
+			Name:        funcName,
+			Description: t.Function.Description,
+			Parameters:  t.Function.Parameters,
+		})
+	}
+	return result
+}
+
+// GetConfigDir returns the global config directory path.
+func (a *App) GetConfigDir() string {
+	dir, _ := config.GlobalDir()
+	return dir
+}
+
+func (a *App) GetInfo() map[string]interface{} {
+	toolCount := 0
+	if a.engine != nil {
+		toolCount = len(a.engine.Tools())
+	}
+	return map[string]interface{}{
+		"language": a.language,
+		"tools":    toolCount,
+		"ready":    a.ready,
+	}
+}
+
+// GetAuthStatus returns runtime auth state from the Caller (reflects set_auth calls).
+func (a *App) GetAuthStatus() []gateway.TargetAuthStatus {
+	if a.router == nil || a.router.HttpCaller == nil {
+		return []gateway.TargetAuthStatus{}
+	}
+	return a.router.HttpCaller.AuthStatus()
+}
+
+// StopChat cancels the current active chat if any.
+func (a *App) StopChat() {
+	a.chatCancelMu.Lock()
+	defer a.chatCancelMu.Unlock()
+	if a.chatCancel != nil {
+		a.chatCancel()
+	}
+}
+
+// EditMessage edits a message at the given index and regenerates from that point.
+// Frontend must convert message display index to actual Messages array index.
+func (a *App) EditMessage(convID string, msgIndex int, newContent string) string {
+	if !a.ready {
+		return "not ready"
+	}
+
+	chatCtx, cancel := context.WithCancel(a.ctx)
+	a.chatCancelMu.Lock()
+	a.chatCancel = cancel
+	a.chatCancelMu.Unlock()
+	defer func() {
+		a.chatCancelMu.Lock()
+		a.chatCancel = nil
+		a.chatCancelMu.Unlock()
+	}()
+
+	confirm := func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	}
+
+	var lastUsage interface{}
+	err := a.engine.EditMessageAndRegenerate(chatCtx, convID, msgIndex, newContent, "", confirm, func(event engine.Event) {
+		if event.Type == "usage" {
+			lastUsage = event.Data
+			return
+		}
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": event.Type,
+			"data": event.Data,
+		})
+	})
+
+	if err != nil {
+		log.Printf("EditMessage error: %v", err)
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": "error",
+			"data": map[string]string{"error": err.Error()},
+		})
+		return err.Error()
+	}
+
+	doneData := map[string]interface{}{
+		"conversation_id": convID,
+	}
+	if lastUsage != nil {
+		doneData["usage"] = lastUsage
+	}
+	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+		"type": "done",
+		"data": doneData,
+	})
+	return ""
+}
+
+// DeleteMessagesFrom deletes messages starting from the given index.
+func (a *App) DeleteMessagesFrom(convID string, msgIndex int) string {
+	if !a.ready {
+		return "not ready"
+	}
+	if err := a.engine.DeleteMessagesFrom(convID, msgIndex); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// DeleteMessage deletes a single message at the given frontend display index.
+// For assistant messages with tool calls, deletes the entire conversation turn
+// (assistant + all subsequent tool results).
+func (a *App) DeleteMessage(convID string, frontendIndex int) string {
+	if !a.ready {
+		return "not ready"
+	}
+	conv := a.engine.GetConversation(convID)
+	if conv == nil {
+		return "conversation not found"
+	}
+
+	// Build frontend → backend index mapping
+	frontendIdx := 0
+	targetBackendIdx := -1
+	targetMsg := (*llm.Message)(nil)
+
+	for i, m := range conv.Messages {
+		if m.Role == "system" {
+			continue
+		}
+
+		msgStart := frontendIdx
+		msgCount := 0
+
+		switch m.Role {
+		case "user":
+			msgCount = 1
+		case "assistant":
+			if m.Content != "" {
+				msgCount++
+			}
+			msgCount += len(m.ToolCalls)
+		case "tool":
+			msgCount = 1
+		}
+
+		// Check if frontendIndex falls within this backend message's range
+		if frontendIndex >= msgStart && frontendIndex < msgStart+msgCount {
+			targetBackendIdx = i
+			targetMsg = &conv.Messages[i]
+			break
+		}
+
+		frontendIdx += msgCount
+	}
+
+	if targetBackendIdx == -1 {
+		return "invalid message index"
+	}
+
+	// Determine what to delete based on message type
+	deleteStart := targetBackendIdx
+	deleteEnd := targetBackendIdx
+
+	if targetMsg.Role == "assistant" && len(targetMsg.ToolCalls) > 0 {
+		// Delete assistant + all subsequent tool results
+		toolCallIDs := make(map[string]bool)
+		for _, tc := range targetMsg.ToolCalls {
+			toolCallIDs[tc.ID] = true
+		}
+
+		// Find all subsequent tool messages that match these tool call IDs
+		for i := targetBackendIdx + 1; i < len(conv.Messages); i++ {
+			if conv.Messages[i].Role == "tool" && toolCallIDs[conv.Messages[i].ToolCallID] {
+				deleteEnd = i
+				delete(toolCallIDs, conv.Messages[i].ToolCallID)
+			} else if conv.Messages[i].Role != "tool" {
+				// Stop at the next non-tool message
+				break
+			}
+		}
+	} else if targetMsg.Role == "tool" {
+		// Deleting a tool result - find and delete the assistant that triggered it
+		toolCallID := targetMsg.ToolCallID
+		for i := targetBackendIdx - 1; i >= 0; i-- {
+			if conv.Messages[i].Role == "assistant" {
+				// Check if this assistant has the matching tool call
+				for _, tc := range conv.Messages[i].ToolCalls {
+					if tc.ID == toolCallID {
+						deleteStart = i
+						// Also delete all tool results for this assistant
+						for _, otherTC := range conv.Messages[i].ToolCalls {
+							for j := i + 1; j < len(conv.Messages); j++ {
+								if conv.Messages[j].Role == "tool" && conv.Messages[j].ToolCallID == otherTC.ID {
+									if j > deleteEnd {
+										deleteEnd = j
+									}
+								}
+							}
+						}
+						break
+					}
+				}
+				break
+			}
+		}
+	}
+	// For user messages or assistant messages without tool calls, just delete that single message
+
+	// Delete the range [deleteStart, deleteEnd]
+	if deleteEnd > deleteStart {
+		// We need to delete a range, not just from a point
+		// Rebuild the message list excluding [deleteStart, deleteEnd]
+		newMessages := append([]llm.Message{}, conv.Messages[:deleteStart]...)
+		if deleteEnd+1 < len(conv.Messages) {
+			newMessages = append(newMessages, conv.Messages[deleteEnd+1:]...)
+		}
+		a.convMgr.UpdateMessages(convID, newMessages)
+		return ""
+	}
+
+	// Single message deletion
+	if err := a.engine.DeleteMessage(convID, deleteStart); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// UpdateToolConfig updates the tool configuration for a conversation.
+func (a *App) UpdateToolConfig(convID string, enabledSources, disabledTools []string) string {
+	if !a.ready {
+		return "not ready"
+	}
+
+	// Map display names back to sanitized names for internal use
+	sanitizedSources := make([]string, 0, len(enabledSources))
+	if a.targetDisplayMap != nil {
+		// Build reverse map: display name -> sanitized name
+		reverseMap := make(map[string]string)
+		for sanitized, display := range a.targetDisplayMap {
+			reverseMap[display] = sanitized
+		}
+
+		for _, displayName := range enabledSources {
+			if sanitized, ok := reverseMap[displayName]; ok {
+				sanitizedSources = append(sanitizedSources, sanitized)
+			} else {
+				// Already sanitized or unknown, keep as-is
+				sanitizedSources = append(sanitizedSources, displayName)
+			}
+		}
+	} else {
+		sanitizedSources = enabledSources
+	}
+
+	if err := a.engine.UpdateToolConfig(convID, sanitizedSources, disabledTools); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// GetToolConfig returns the tool configuration for a conversation.
+type ToolConfig struct {
+	EnabledSources []string `json:"enabled_sources"`
+	DisabledTools  []string `json:"disabled_tools"`
+}
+
+func (a *App) GetToolConfig(convID string) ToolConfig {
+	if a.engine == nil || convID == "" {
+		return ToolConfig{
+			EnabledSources: []string{},
+			DisabledTools:  []string{},
+		}
+	}
+	conv := a.engine.GetConversation(convID)
+	if conv == nil {
+		return ToolConfig{
+			EnabledSources: []string{},
+			DisabledTools:  []string{},
+		}
+	}
+	// Ensure slices are never nil (JSON null) for frontend
+	enabledSources := conv.EnabledSources
+	if enabledSources == nil {
+		enabledSources = []string{}
+	}
+	disabledTools := conv.DisabledTools
+	if disabledTools == nil {
+		disabledTools = []string{}
+	}
+
+	// Map sanitized source names to display names for frontend
+	displaySources := make([]string, 0, len(enabledSources))
+	if a.targetDisplayMap != nil {
+		for _, sanitized := range enabledSources {
+			if display, ok := a.targetDisplayMap[sanitized]; ok {
+				displaySources = append(displaySources, display)
+			} else {
+				// Unknown or already display name
+				displaySources = append(displaySources, sanitized)
+			}
+		}
+	} else {
+		displaySources = enabledSources
+	}
+
+	return ToolConfig{
+		EnabledSources: displaySources,
+		DisabledTools:  disabledTools,
+	}
+}
+
+// GetAvailableSources returns all available tool sources (MCP clients + API targets).
+func (a *App) GetAvailableSources() []SourceInfo {
+	if a.engine == nil {
+		return []SourceInfo{}
+	}
+
+	sourcesMap := make(map[string]*SourceInfo)
+
+	for _, tool := range a.engine.Tools() {
+		toolName := tool.Function.Name
+		source := "default"
+		displayName := toolName
+
+		if idx := strings.Index(toolName, "__"); idx > 0 {
+			source = toolName[:idx]
+			displayName = toolName[idx+2:]
+		}
+
+		// Skip temporary tools (_upload, _probe)
+		if strings.HasPrefix(source, "_") {
+			continue
+		}
+
+		// Map sanitized source name to display name
+		sourceDisplayName := source
+		if a.targetDisplayMap != nil {
+			if dn, ok := a.targetDisplayMap[source]; ok {
+				sourceDisplayName = dn
+			}
+		}
+
+		if _, exists := sourcesMap[sourceDisplayName]; !exists {
+			sourcesMap[sourceDisplayName] = &SourceInfo{
+				Name:  sourceDisplayName,
+				Tools: []ToolSummary{},
+			}
+		}
+
+		group := ""
+		if a.router != nil {
+			group = a.router.HttpCaller.ToolGroup(toolName)
+		}
+
+		sourcesMap[sourceDisplayName].Tools = append(sourcesMap[sourceDisplayName].Tools, ToolSummary{
+			Name:        toolName,
+			DisplayName: displayName,
+			Group:       group,
+			Description: tool.Function.Description,
+		})
+	}
+
+	result := make([]SourceInfo, 0, len(sourcesMap))
+	for _, src := range sourcesMap {
+		result = append(result, *src)
+	}
+	log.Printf("GetAvailableSources: %d sources, %d total tools", len(result), len(a.engine.Tools()))
+	return result
+}
+
+type SourceInfo struct {
+	Name  string        `json:"name"`
+	Tools []ToolSummary `json:"tools"`
+}
+
+type ToolSummary struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Group       string `json:"group"`
+	Description string `json:"description"`
+}
+
+// RegenerateFrom regenerates from a specific message index (for retry).
+func (a *App) RegenerateFrom(convID string, fromIndex int) string {
+	if !a.ready {
+		return "not ready"
+	}
+
+	chatCtx, cancel := context.WithCancel(a.ctx)
+	a.chatCancelMu.Lock()
+	a.chatCancel = cancel
+	a.chatCancelMu.Unlock()
+	defer func() {
+		a.chatCancelMu.Lock()
+		a.chatCancel = nil
+		a.chatCancelMu.Unlock()
+	}()
+
+	confirm := func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	}
+
+	var lastUsage interface{}
+	err := a.engine.RegenerateFrom(chatCtx, convID, fromIndex, "", confirm, func(event engine.Event) {
+		if event.Type == "usage" {
+			lastUsage = event.Data
+			return
+		}
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": event.Type,
+			"data": event.Data,
+		})
+	})
+
+	if err != nil {
+		log.Printf("RegenerateFrom error: %v", err)
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": "error",
+			"data": map[string]string{"error": err.Error()},
+		})
+		return err.Error()
+	}
+
+	doneData := map[string]interface{}{
+		"conversation_id": convID,
+	}
+	if lastUsage != nil {
+		doneData["usage"] = lastUsage
+	}
+	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+		"type": "done",
+		"data": doneData,
+	})
+	return ""
+}
+
+// SetWindowTitle dynamically sets the window title (for i18n support).
+func (a *App) SetWindowTitle(title string) {
+	wailsRuntime.WindowSetTitle(a.ctx, title)
+}

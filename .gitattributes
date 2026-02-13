@@ -1,0 +1,22 @@
+# Normalize line endings
+* text=auto
+
+# Go
+*.go text eol=lf
+
+# Web
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Binary
+*.exe binary
+*.png binary
+*.ico binary
+*.woff2 binary

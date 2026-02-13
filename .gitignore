@@ -1,0 +1,54 @@
+# Binaries
+nlui
+nlui.exe
+kelper.exe
+desktop/desktop.exe
+*.syso
+
+# Runtime config & data
+nlui.yaml
+!nlui.example.yaml
+*.db
+
+# Build outputs
+build/
+dist/
+desktop/build/
+
+# Node.js
+node_modules/
+package-lock.json
+*.log
+
+# SDK build outputs
+sdk/*/dist/
+sdk/*/node_modules/
+
+# TypeScript generated
+*.d.ts
+*.d.ts.map
+
+# Python
+**/__pycache__/
+*.pyc
+
+# Go test
+coverage.out
+
+# IDE & editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VitePress
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
+# Project local
+.claude/settings.local.json

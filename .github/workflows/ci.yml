@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  # ─── Go: build, test, coverage ───
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: go build ./bootstrap ./cmd/... ./config ./core/... ./engine ./gateway ./mcp ./server ./service
+
+      - name: Test
+        run: go test -coverprofile=coverage.out ./core/... ./engine/... ./gateway/... ./config/... ./service/...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+  # ─── Go: lint ───
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.9
+          args: ./bootstrap/... ./cmd/... ./config/... ./core/... ./engine/... ./gateway/... ./mcp/... ./server/... ./service/...
+
+  # ─── TypeScript SDK: test ───
+  sdk:
+    name: SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Test engine
+        run: pnpm --filter @nlui/engine test

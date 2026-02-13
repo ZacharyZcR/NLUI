@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "target": "openweathermap",
+  "base_url": "https://api.openweathermap.org/data/2.5",
+  "auth": {"type": "query", "header_name": "appid", "token": ""},
+  "endpoints": [
+    {
+      "name": "openweathermap__get_current_weather",
+      "description": "Get current weather data for a location. Provide city name, coordinates, or zip code. Requires API key (use set_auth first).",
+      "method": "GET",
+      "path": "/weather",
+      "group": "Current Weather",
+      "params": [
+        {"name": "q", "in": "query", "type": "string", "required": false},
+        {"name": "lat", "in": "query", "type": "string", "required": false},
+        {"name": "lon", "in": "query", "type": "string", "required": false},
+        {"name": "id", "in": "query", "type": "string", "required": false},
+        {"name": "zip", "in": "query", "type": "string", "required": false},
+        {"name": "units", "in": "query", "type": "string", "required": false},
+        {"name": "lang", "in": "query", "type": "string", "required": false}
+      ],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {"type": "string", "description": "City name, e.g. 'London' or 'London,uk'"},
+          "lat": {"type": "string", "description": "Latitude. Must use with lon."},
+          "lon": {"type": "string", "description": "Longitude. Must use with lat."},
+          "id": {"type": "string", "description": "City ID from OpenWeatherMap."},
+          "zip": {"type": "string", "description": "Zip code, e.g. '95050,us'"},
+          "units": {"type": "string", "enum": ["standard", "metric", "imperial"], "description": "Temperature units. metric=Celsius, imperial=Fahrenheit."},
+          "lang": {"type": "string", "description": "Language code, e.g. 'zh_cn', 'en', 'ja'"}
+        }
+      }
+    },
+    {
+      "name": "openweathermap__get_5day_forecast",
+      "description": "Get 5-day weather forecast with 3-hour intervals for a location. Requires API key.",
+      "method": "GET",
+      "path": "/forecast",
+      "group": "Forecast",
+      "params": [
+        {"name": "q", "in": "query", "type": "string", "required": false},
+        {"name": "lat", "in": "query", "type": "string", "required": false},
+        {"name": "lon", "in": "query", "type": "string", "required": false},
+        {"name": "id", "in": "query", "type": "string", "required": false},
+        {"name": "zip", "in": "query", "type": "string", "required": false},
+        {"name": "units", "in": "query", "type": "string", "required": false},
+        {"name": "lang", "in": "query", "type": "string", "required": false},
+        {"name": "cnt", "in": "query", "type": "integer", "required": false}
+      ],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "q": {"type": "string", "description": "City name, e.g. 'Beijing' or 'Tokyo,jp'"},
+          "lat": {"type": "string", "description": "Latitude. Must use with lon."},
+          "lon": {"type": "string", "description": "Longitude. Must use with lat."},
+          "id": {"type": "string", "description": "City ID."},
+          "zip": {"type": "string", "description": "Zip code, e.g. '10001,us'"},
+          "units": {"type": "string", "enum": ["standard", "metric", "imperial"], "description": "Temperature units."},
+          "lang": {"type": "string", "description": "Language code."},
+          "cnt": {"type": "integer", "description": "Number of 3-hour intervals to return (max 40)."}
+        }
+      }
+    },
+    {
+      "name": "openweathermap__get_air_pollution",
+      "description": "Get current air pollution data (Air Quality Index, CO, NO2, O3, PM2.5, PM10, etc.) for a location. Requires coordinates.",
+      "method": "GET",
+      "path": "/air_pollution",
+      "group": "Air Quality",
+      "params": [
+        {"name": "lat", "in": "query", "type": "string", "required": true},
+        {"name": "lon", "in": "query", "type": "string", "required": true}
+      ],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lat": {"type": "string", "description": "Latitude"},
+          "lon": {"type": "string", "description": "Longitude"}
+        },
+        "required": ["lat", "lon"]
+      }
+    }
+  ]
+}

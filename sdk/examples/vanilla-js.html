@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLUI Vanilla JS Example</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        #chat-box {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .user {
+            background: #007aff;
+            color: white;
+            text-align: right;
+        }
+        .assistant {
+            background: white;
+            border: 1px solid #ddd;
+        }
+        #input-box {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0051d5;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>NLUI Vanilla JS 示例</h1>
+    <div id="chat-box"></div>
+    <div id="input-box">
+        <input type="text" id="message-input" placeholder="输入消息...">
+        <button id="send-btn">发送</button>
+    </div>
+
+    <script type="module">
+        import NLUIClient from '../js/nlui-client.ts';
+
+        const client = new NLUIClient({
+            baseURL: 'http://localhost:9000',
+        });
+
+        const chatBox = document.getElementById('chat-box');
+        const input = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        let conversationId = null;
+
+        function addMessage(role, content) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            div.textContent = content;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = input.value.trim();
+            if (!message) return;
+
+            input.value = '';
+            sendBtn.disabled = true;
+            addMessage('user', message);
+
+            let assistantMessage = '';
+            const assistantDiv = document.createElement('div');
+            assistantDiv.className = 'message assistant';
+            chatBox.appendChild(assistantDiv);
+
+            try {
+                await client.chat(message, {
+                    conversationId,
+                    onEvent: (event) => {
+                        if (event.type === 'content_delta') {
+                            assistantMessage += event.data.delta;
+                            assistantDiv.textContent = assistantMessage;
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        } else if (event.type === 'content') {
+                            assistantMessage = event.data.text;
+                            assistantDiv.textContent = assistantMessage;
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                    },
+                    onDone: (convId) => {
+                        conversationId = convId;
+                        console.log('Conversation ID:', convId);
+                    },
+                    onError: (error) => {
+                        console.error('Chat error:', error);
+                        assistantDiv.textContent = `错误: ${error.message}`;
+                        assistantDiv.style.background = '#fee';
+                    },
+                });
+            } catch (error) {
+                console.error('Failed to send:', error);
+            } finally {
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // 健康检查
+        client.health().then(data => {
+            console.log('NLUI Health:', data);
+        });
+    </script>
+</body>
+</html>

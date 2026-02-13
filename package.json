@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "devDependencies": {
+    "husky": "^9",
+    "vitepress": "^1.6.4"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  }
+}

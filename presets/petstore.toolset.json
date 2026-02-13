@@ -1,0 +1,350 @@
+{
+  "version": 1,
+  "target": "petstore",
+  "base_url": "https://petstore3.swagger.io/api/v3",
+  "auth": {"type": "", "header_name": "", "token": ""},
+  "endpoints": [
+    {
+      "name": "petstore__addPet",
+      "description": "Add a new pet to the store.",
+      "method": "POST",
+      "path": "/pet",
+      "group": "pet",
+      "params": [],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Pet name"},
+          "status": {"type": "string", "enum": ["available", "pending", "sold"], "description": "Pet status in the store"},
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer"},
+              "name": {"type": "string"}
+            },
+            "description": "Pet category"
+          },
+          "photoUrls": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Photo URLs"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}
+            },
+            "description": "Tags"
+          }
+        },
+        "required": ["name", "photoUrls"]
+      }
+    },
+    {
+      "name": "petstore__updatePet",
+      "description": "Update an existing pet by ID.",
+      "method": "PUT",
+      "path": "/pet",
+      "group": "pet",
+      "params": [],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "description": "Pet ID"},
+          "name": {"type": "string", "description": "Pet name"},
+          "status": {"type": "string", "enum": ["available", "pending", "sold"], "description": "Pet status"},
+          "category": {
+            "type": "object",
+            "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}
+          },
+          "photoUrls": {"type": "array", "items": {"type": "string"}},
+          "tags": {"type": "array", "items": {"type": "object", "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}}}
+        },
+        "required": ["id", "name", "photoUrls"]
+      }
+    },
+    {
+      "name": "petstore__findPetsByStatus",
+      "description": "Find pets by status. Multiple status values can be provided with comma separated strings.",
+      "method": "GET",
+      "path": "/pet/findByStatus",
+      "group": "pet",
+      "params": [{"name": "status", "in": "query", "type": "string", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["available", "pending", "sold"], "description": "Status to filter by"}
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "petstore__findPetsByTags",
+      "description": "Find pets by tags. Multiple tags can be provided with comma separated strings.",
+      "method": "GET",
+      "path": "/pet/findByTags",
+      "group": "pet",
+      "params": [{"name": "tags", "in": "query", "type": "string", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tags": {"type": "string", "description": "Tags to filter by (comma separated)"}
+        },
+        "required": ["tags"]
+      }
+    },
+    {
+      "name": "petstore__getPetById",
+      "description": "Find pet by ID. Returns a single pet.",
+      "method": "GET",
+      "path": "/pet/{petId}",
+      "group": "pet",
+      "params": [{"name": "petId", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "petId": {"type": "integer", "description": "ID of pet to return"}
+        },
+        "required": ["petId"]
+      }
+    },
+    {
+      "name": "petstore__updatePetWithForm",
+      "description": "Update a pet in the store with form data.",
+      "method": "POST",
+      "path": "/pet/{petId}",
+      "group": "pet",
+      "params": [
+        {"name": "petId", "in": "path", "type": "integer", "required": true},
+        {"name": "name", "in": "query", "type": "string", "required": false},
+        {"name": "status", "in": "query", "type": "string", "required": false}
+      ],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "petId": {"type": "integer", "description": "ID of pet to update"},
+          "name": {"type": "string", "description": "New name"},
+          "status": {"type": "string", "description": "New status"}
+        },
+        "required": ["petId"]
+      }
+    },
+    {
+      "name": "petstore__deletePet",
+      "description": "Delete a pet by ID.",
+      "method": "DELETE",
+      "path": "/pet/{petId}",
+      "group": "pet",
+      "params": [{"name": "petId", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "petId": {"type": "integer", "description": "Pet ID to delete"}
+        },
+        "required": ["petId"]
+      }
+    },
+    {
+      "name": "petstore__getInventory",
+      "description": "Returns pet inventories by status. Returns a map of status codes to quantities.",
+      "method": "GET",
+      "path": "/store/inventory",
+      "group": "store",
+      "params": [],
+      "has_body": false,
+      "parameters": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "petstore__placeOrder",
+      "description": "Place a new order for a pet.",
+      "method": "POST",
+      "path": "/store/order",
+      "group": "store",
+      "params": [],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "petId": {"type": "integer", "description": "Pet ID to order"},
+          "quantity": {"type": "integer", "description": "Quantity"},
+          "shipDate": {"type": "string", "description": "Ship date (ISO 8601)"},
+          "status": {"type": "string", "enum": ["placed", "approved", "delivered"], "description": "Order status"},
+          "complete": {"type": "boolean", "description": "Whether the order is complete"}
+        },
+        "required": ["petId", "quantity"]
+      }
+    },
+    {
+      "name": "petstore__getOrderById",
+      "description": "Find purchase order by ID. For valid response try integer IDs with value <= 5 or > 10.",
+      "method": "GET",
+      "path": "/store/order/{orderId}",
+      "group": "store",
+      "params": [{"name": "orderId", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "orderId": {"type": "integer", "description": "ID of order to fetch"}
+        },
+        "required": ["orderId"]
+      }
+    },
+    {
+      "name": "petstore__deleteOrder",
+      "description": "Delete purchase order by ID.",
+      "method": "DELETE",
+      "path": "/store/order/{orderId}",
+      "group": "store",
+      "params": [{"name": "orderId", "in": "path", "type": "integer", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "orderId": {"type": "integer", "description": "ID of order to delete"}
+        },
+        "required": ["orderId"]
+      }
+    },
+    {
+      "name": "petstore__createUser",
+      "description": "Create a new user.",
+      "method": "POST",
+      "path": "/user",
+      "group": "user",
+      "params": [],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {"type": "string", "description": "Username"},
+          "firstName": {"type": "string", "description": "First name"},
+          "lastName": {"type": "string", "description": "Last name"},
+          "email": {"type": "string", "description": "Email address"},
+          "password": {"type": "string", "description": "Password"},
+          "phone": {"type": "string", "description": "Phone number"}
+        },
+        "required": ["username"]
+      }
+    },
+    {
+      "name": "petstore__createUsersWithList",
+      "description": "Create a list of users with given input array.",
+      "method": "POST",
+      "path": "/user/createWithList",
+      "group": "user",
+      "params": [],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "username": {"type": "string"},
+                "firstName": {"type": "string"},
+                "lastName": {"type": "string"},
+                "email": {"type": "string"},
+                "password": {"type": "string"}
+              }
+            },
+            "description": "Array of user objects"
+          }
+        },
+        "required": ["users"]
+      }
+    },
+    {
+      "name": "petstore__loginUser",
+      "description": "Log user into the system.",
+      "method": "GET",
+      "path": "/user/login",
+      "group": "user",
+      "params": [
+        {"name": "username", "in": "query", "type": "string", "required": false},
+        {"name": "password", "in": "query", "type": "string", "required": false}
+      ],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {"type": "string", "description": "Username for login"},
+          "password": {"type": "string", "description": "Password for login"}
+        }
+      }
+    },
+    {
+      "name": "petstore__logoutUser",
+      "description": "Log out current logged in user session.",
+      "method": "GET",
+      "path": "/user/logout",
+      "group": "user",
+      "params": [],
+      "has_body": false,
+      "parameters": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "petstore__getUserByName",
+      "description": "Get user by username.",
+      "method": "GET",
+      "path": "/user/{username}",
+      "group": "user",
+      "params": [{"name": "username", "in": "path", "type": "string", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {"type": "string", "description": "The username to fetch"}
+        },
+        "required": ["username"]
+      }
+    },
+    {
+      "name": "petstore__updateUser",
+      "description": "Update user by username.",
+      "method": "PUT",
+      "path": "/user/{username}",
+      "group": "user",
+      "params": [{"name": "username", "in": "path", "type": "string", "required": true}],
+      "has_body": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {"type": "string", "description": "Username to update"},
+          "firstName": {"type": "string"},
+          "lastName": {"type": "string"},
+          "email": {"type": "string"},
+          "password": {"type": "string"},
+          "phone": {"type": "string"}
+        },
+        "required": ["username"]
+      }
+    },
+    {
+      "name": "petstore__deleteUser",
+      "description": "Delete user by username.",
+      "method": "DELETE",
+      "path": "/user/{username}",
+      "group": "user",
+      "params": [{"name": "username", "in": "path", "type": "string", "required": true}],
+      "has_body": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {"type": "string", "description": "Username to delete"}
+        },
+        "required": ["username"]
+      }
+    }
+  ]
+}

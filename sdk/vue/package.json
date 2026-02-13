@@ -1,0 +1,37 @@
+{
+  "name": "@nlui/vue",
+  "version": "1.0.0",
+  "description": "Vue 3 Composition API for NLUI",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+  },
+  "keywords": [
+    "nlui",
+    "vue",
+    "composition-api",
+    "chat",
+    "llm",
+    "ai"
+  ],
+  "author": "NLUI Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vue": "^3.3.10"
+  },
+  "dependencies": {
+    "@nlui/client": "workspace:*"
+  }
+}
