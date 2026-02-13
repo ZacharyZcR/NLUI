@@ -5,10 +5,13 @@ import (
 	"fmt"
 
 	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/gateway"
 )
 
 const MaxIterations = 25
+
+type Executor interface {
+	Execute(ctx context.Context, toolName, argsJSON, authToken string) (string, error)
+}
 
 type Event struct {
 	Type string      `json:"type"`
@@ -30,12 +33,12 @@ type ContentEvent struct {
 }
 
 type Loop struct {
-	client *llm.Client
-	caller *gateway.Caller
+	client   *llm.Client
+	executor Executor
 }
 
-func New(client *llm.Client, caller *gateway.Caller) *Loop {
-	return &Loop{client: client, caller: caller}
+func New(client *llm.Client, executor Executor) *Loop {
+	return &Loop{client: client, executor: executor}
 }
 
 func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool, authToken string, onEvent func(Event)) ([]llm.Message, error) {
@@ -62,7 +65,7 @@ func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool
 				Arguments: tc.Function.Arguments,
 			}})
 
-			result, err := l.caller.Execute(ctx, tc.Function.Name, tc.Function.Arguments, authToken)
+			result, err := l.executor.Execute(ctx, tc.Function.Name, tc.Function.Arguments, authToken)
 			if err != nil {
 				result = fmt.Sprintf("Error: %s", err.Error())
 			}

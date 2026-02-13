@@ -11,6 +11,7 @@ import (
 type AuthConfig struct {
 	Type       string
 	HeaderName string
+	Token      string
 }
 
 type Endpoint struct {

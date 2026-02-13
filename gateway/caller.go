@@ -29,6 +29,11 @@ func (c *Caller) AddEndpoints(endpoints map[string]*Endpoint) {
 	}
 }
 
+func (c *Caller) HasTool(name string) bool {
+	_, ok := c.endpoints[name]
+	return ok
+}
+
 func (c *Caller) Execute(ctx context.Context, toolName, argsJSON, authToken string) (string, error) {
 	ep, ok := c.endpoints[toolName]
 	if !ok {
@@ -86,15 +91,23 @@ func (c *Caller) Execute(ctx context.Context, toolName, argsJSON, authToken stri
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	// Auth
+	// Auth (client token takes precedence, fallback to configured default)
 	switch ep.Auth.Type {
 	case "bearer":
-		if authToken != "" {
-			req.Header.Set("Authorization", "Bearer "+authToken)
+		token := authToken
+		if token == "" {
+			token = ep.Auth.Token
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
 		}
 	case "header":
-		if authToken != "" && ep.Auth.HeaderName != "" {
-			req.Header.Set(ep.Auth.HeaderName, authToken)
+		token := authToken
+		if token == "" {
+			token = ep.Auth.Token
+		}
+		if token != "" && ep.Auth.HeaderName != "" {
+			req.Header.Set(ep.Auth.HeaderName, token)
 		}
 	}
 

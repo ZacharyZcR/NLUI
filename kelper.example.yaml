@@ -9,7 +9,16 @@ targets:
     spec: http://localhost:8080/swagger/doc.json
     auth:
       type: bearer
+      token: ""           # default token for MCP server mode
     description: "主业务后端"
+
+mcp:
+  server:
+    sse_port: 0           # >0 to enable MCP SSE server alongside HTTP
+  clients:                # connect to external MCP servers
+    # - name: filesystem
+    #   command: npx
+    #   args: ["-y", "@anthropic/mcp-filesystem", "/path/to/dir"]
 
 server:
   port: 9000

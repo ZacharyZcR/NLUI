@@ -10,6 +10,7 @@ type Config struct {
 	LLM     LLMConfig    `yaml:"llm"`
 	Targets []Target     `yaml:"targets"`
 	Server  ServerConfig `yaml:"server"`
+	MCP     MCPConfig    `yaml:"mcp"`
 }
 
 type LLMConfig struct {
@@ -29,6 +30,22 @@ type Target struct {
 type AuthConfig struct {
 	Type       string `yaml:"type"`
 	HeaderName string `yaml:"header_name"`
+	Token      string `yaml:"token"`
+}
+
+type MCPConfig struct {
+	Server  MCPServerConfig  `yaml:"server"`
+	Clients []MCPClientConfig `yaml:"clients"`
+}
+
+type MCPServerConfig struct {
+	SSEPort int `yaml:"sse_port"`
+}
+
+type MCPClientConfig struct {
+	Name    string   `yaml:"name"`
+	Command string   `yaml:"command"`
+	Args    []string `yaml:"args"`
 }
 
 type ServerConfig struct {
