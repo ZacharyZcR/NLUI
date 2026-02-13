@@ -53,7 +53,22 @@ type StreamChunk struct {
 }
 
 type StreamChoice struct {
-	Index        int     `json:"index"`
-	Delta        Message `json:"delta"`
-	FinishReason *string `json:"finish_reason"`
+	Index        int          `json:"index"`
+	Delta        StreamDelta  `json:"delta"`
+	FinishReason *string      `json:"finish_reason"`
+}
+
+// StreamDelta is the delta payload in a streaming chunk.
+// Separate from Message because tool_calls have an extra "index" field.
+type StreamDelta struct {
+	Role      string            `json:"role,omitempty"`
+	Content   string            `json:"content,omitempty"`
+	ToolCalls []StreamToolCall  `json:"tool_calls,omitempty"`
+}
+
+type StreamToolCall struct {
+	Index    int          `json:"index"`
+	ID       string       `json:"id,omitempty"`
+	Type     string       `json:"type,omitempty"`
+	Function FunctionCall `json:"function"`
 }
