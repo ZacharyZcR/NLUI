@@ -16,9 +16,10 @@ type Config struct {
 }
 
 type LLMConfig struct {
-	APIBase string `yaml:"api_base"`
-	APIKey  string `yaml:"api_key"`
-	Model   string `yaml:"model"`
+	APIBase      string `yaml:"api_base"`
+	APIKey       string `yaml:"api_key"`
+	Model        string `yaml:"model"`
+	MaxCtxTokens int    `yaml:"max_context_tokens"`
 }
 
 type Target struct {

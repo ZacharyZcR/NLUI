@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/ZacharyZcR/Kelper/config"
+	"github.com/ZacharyZcR/Kelper/core/bootstrap"
 	"github.com/ZacharyZcR/Kelper/core/conversation"
 	"github.com/ZacharyZcR/Kelper/core/llm"
 	"github.com/ZacharyZcR/Kelper/core/toolloop"
 	"github.com/ZacharyZcR/Kelper/gateway"
 	"github.com/ZacharyZcR/Kelper/mcp"
-	"github.com/getkin/kin-openapi/openapi3"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"gopkg.in/yaml.v3"
 )
@@ -30,6 +30,7 @@ type App struct {
 	language     string
 	ready        bool
 	confirmCh    chan bool
+	mcpClients   map[string]*mcp.Client
 }
 
 type ConversationInfo struct {
@@ -69,6 +70,12 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) initialize() {
 	a.ready = false
 
+	// Close previous MCP clients if reinitializing
+	for _, c := range a.mcpClients {
+		c.Close()
+	}
+	a.mcpClients = nil
+
 	cfg, err := config.Load(a.configPath())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
@@ -80,68 +87,28 @@ func (a *App) initialize() {
 		return
 	}
 
-	var allTools []llm.Tool
-	allEndpoints := make(map[string]*gateway.Endpoint)
-
-	for _, target := range cfg.Targets {
-		var doc *openapi3.T
-
-		if target.Spec != "" {
-			doc, err = gateway.LoadSpec(target.Spec)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: skip %s: %v\n", target.Name, err)
-				continue
-			}
-		} else if target.BaseURL != "" {
-			doc, _, err = gateway.DiscoverSpec(target.BaseURL)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: skip %s: %v\n", target.Name, err)
-				continue
-			}
-		}
-
-		if doc == nil {
-			continue
-		}
-
-		auth := gateway.AuthConfig{
-			Type:       target.Auth.Type,
-			HeaderName: target.Auth.HeaderName,
-			Token:      target.Auth.Token,
-		}
-		tools, endpoints := gateway.BuildTools(doc, target.Name, target.BaseURL, auth)
-		allTools = append(allTools, tools...)
-		for k, v := range endpoints {
-			allEndpoints[k] = v
-		}
-
+	allTools, allEndpoints := bootstrap.DiscoverTools(cfg.Targets, func(name string, tools []llm.Tool) {
 		if data, err := json.Marshal(tools); err == nil {
-			config.SaveToolCache(target.Name, data)
+			config.SaveToolCache(name, data)
 		}
+	})
+
+	mcpClients, mcpTools := bootstrap.InitMCPClients(cfg.MCP.Clients)
+	allTools = append(allTools, mcpTools...)
+	a.mcpClients = mcpClients
+
+	router := &bootstrap.Router{
+		HttpCaller: gateway.NewCaller(allEndpoints),
+		McpClients: mcpClients,
 	}
 
-	caller := gateway.NewCaller(allEndpoints)
-
-	mcpClients := make(map[string]*mcp.Client)
-	for _, mcpCfg := range cfg.MCP.Clients {
-		client, err := mcp.NewStdioClient(mcpCfg.Name, mcpCfg.Command, mcpCfg.Args)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "WARN: skip MCP %s: %v\n", mcpCfg.Name, err)
-			continue
-		}
-		mcpClients[mcpCfg.Name] = client
-		for _, t := range client.Tools() {
-			allTools = append(allTools, mcp.MCPToolToLLM(t, mcpCfg.Name))
-		}
-	}
-
-	exec := &router{httpCaller: caller, mcpClients: mcpClients}
 	llmClient := llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model)
 
 	a.language = cfg.Language
-	a.systemPrompt = buildSystemPrompt(cfg.Language, cfg.Targets, allTools)
+	a.systemPrompt = bootstrap.BuildSystemPrompt(cfg.Language, cfg.Targets, allTools)
 	a.tools = allTools
-	a.loop = toolloop.New(llmClient, exec)
+	a.loop = toolloop.New(llmClient, router)
+	a.loop.SetMaxContextTokens(cfg.LLM.MaxCtxTokens)
 	a.confirmCh = make(chan bool, 1)
 	a.loop.SetConfirm(func(toolName, argsJSON string) bool {
 		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
@@ -574,72 +541,4 @@ func (a *App) GetInfo() map[string]interface{} {
 		"tools":    len(a.tools),
 		"ready":    a.ready,
 	}
-}
-
-type router struct {
-	httpCaller *gateway.Caller
-	mcpClients map[string]*mcp.Client
-}
-
-func (r *router) Execute(ctx context.Context, toolName, argsJSON, authToken string) (string, error) {
-	if r.httpCaller.HasTool(toolName) {
-		return r.httpCaller.Execute(ctx, toolName, argsJSON, authToken)
-	}
-	parts := strings.SplitN(toolName, "__", 2)
-	if len(parts) == 2 {
-		if client, ok := r.mcpClients[parts[0]]; ok {
-			return client.CallTool(ctx, parts[1], argsJSON)
-		}
-	}
-	return "", fmt.Errorf("unknown tool: %s", toolName)
-}
-
-var promptTemplates = map[string]struct {
-	intro   string
-	tools   string
-	closing string
-}{
-	"zh": {
-		intro:   "你是 Kelper，一个智能AI助手。你可以通过工具与以下系统交互：\n\n",
-		tools:   "可用工具：\n",
-		closing: "\n请根据用户需求使用合适的工具完成任务。如果不确定用户意图，先询问用户。",
-	},
-	"en": {
-		intro:   "You are Kelper, an intelligent AI assistant. You can interact with the following systems through tools:\n\n",
-		tools:   "Available tools:\n",
-		closing: "\nUse the appropriate tools to help users accomplish their tasks. If unsure about the user's intent, ask for clarification.",
-	},
-	"ja": {
-		intro:   "あなたは Kelper、インテリジェントなAIアシスタントです。以下のシステムとツールを通じてやり取りできます：\n\n",
-		tools:   "利用可能なツール：\n",
-		closing: "\nユーザーの要求に応じて適切なツールを使用してタスクを完了してください。ユーザーの意図が不明な場合は確認してください。",
-	},
-}
-
-func buildSystemPrompt(lang string, targets []config.Target, tools []llm.Tool) string {
-	t, ok := promptTemplates[lang]
-	if !ok {
-		t = promptTemplates["en"]
-	}
-
-	var sb strings.Builder
-	sb.WriteString(t.intro)
-
-	for _, tgt := range targets {
-		desc := tgt.Description
-		if desc == "" {
-			desc = tgt.Name
-		}
-		sb.WriteString(fmt.Sprintf("## %s\n%s\n\n", tgt.Name, desc))
-	}
-
-	if len(tools) > 0 {
-		sb.WriteString(t.tools)
-		for _, tool := range tools {
-			sb.WriteString(fmt.Sprintf("- %s: %s\n", tool.Function.Name, tool.Function.Description))
-		}
-	}
-
-	sb.WriteString(t.closing)
-	return sb.String()
 }

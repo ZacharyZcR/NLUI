@@ -42,9 +42,10 @@ type ContentDeltaEvent struct {
 }
 
 type Loop struct {
-	client   *llm.Client
-	executor Executor
-	confirm  ConfirmFunc
+	client       *llm.Client
+	executor     Executor
+	confirm      ConfirmFunc
+	maxCtxTokens int
 }
 
 func New(client *llm.Client, executor Executor) *Loop {
@@ -53,6 +54,10 @@ func New(client *llm.Client, executor Executor) *Loop {
 
 func (l *Loop) SetConfirm(fn ConfirmFunc) {
 	l.confirm = fn
+}
+
+func (l *Loop) SetMaxContextTokens(n int) {
+	l.maxCtxTokens = n
 }
 
 var dangerousPatterns = []string{
@@ -77,7 +82,8 @@ func isDangerous(toolName, argsJSON string) bool {
 
 func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool, authToken string, onEvent func(Event)) ([]llm.Message, error) {
 	for i := 0; i < MaxIterations; i++ {
-		msg, err := l.client.ChatStreamWithTools(ctx, messages, tools, func(delta string) {
+		truncated := truncateMessages(messages, l.maxCtxTokens)
+		msg, err := l.client.ChatStreamWithTools(ctx, truncated, tools, func(delta string) {
 			onEvent(Event{Type: "content_delta", Data: ContentDeltaEvent{Delta: delta}})
 		})
 		if err != nil {
