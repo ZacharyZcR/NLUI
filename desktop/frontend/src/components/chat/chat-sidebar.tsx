@@ -15,6 +15,7 @@ interface ChatSidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onClose?: () => void;
 }
 
 function relativeTime(iso: string): string {
@@ -28,14 +29,24 @@ function relativeTime(iso: string): string {
   return `${days}d`;
 }
 
-export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete }: ChatSidebarProps) {
+export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete, onClose }: ChatSidebarProps) {
   const { t } = useI18n();
+
+  const handleSelect = (id: string) => {
+    onSelect(id);
+    onClose?.();
+  };
+
+  const handleNew = () => {
+    onNew();
+    onClose?.();
+  };
 
   return (
     <div className="flex flex-col h-full w-56 shrink-0 border-r bg-card/80">
       <div className="wails-drag p-3 pb-2">
         <Button
-          onClick={onNew}
+          onClick={handleNew}
           className="wails-nodrag w-full justify-center"
           variant="outline"
           size="sm"
@@ -60,7 +71,7 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 }`}
-                onClick={() => onSelect(conv.id)}
+                onClick={() => handleSelect(conv.id)}
               >
                 <span className="flex-1 truncate">
                   {conv.title || t("sidebar.untitled")}

@@ -1,5 +1,25 @@
 export namespace main {
 	
+	export class ChatMessage {
+	    id: string;
+	    role: string;
+	    content: string;
+	    tool_name?: string;
+	    tool_args?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChatMessage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.role = source["role"];
+	        this.content = source["content"];
+	        this.tool_name = source["tool_name"];
+	        this.tool_args = source["tool_args"];
+	    }
+	}
 	export class ConversationInfo {
 	    id: string;
 	    title: string;

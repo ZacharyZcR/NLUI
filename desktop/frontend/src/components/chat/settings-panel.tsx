@@ -153,8 +153,8 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
 
   return (
     <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 px-6 py-5">
-        <div className="max-w-lg mx-auto space-y-5">
+      <ScrollArea className="flex-1 px-3 sm:px-6 py-5">
+        <div className="max-w-none sm:max-w-lg mx-auto space-y-5">
 
           {/* Proxy */}
           <section className="space-y-3">

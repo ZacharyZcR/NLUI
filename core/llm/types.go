@@ -1,5 +1,7 @@
 package llm
 
+import "encoding/json"
+
 type Message struct {
 	Role       string     `json:"role"`
 	Content    string     `json:"content,omitempty"`
@@ -8,9 +10,10 @@ type Message struct {
 }
 
 type ToolCall struct {
-	ID       string       `json:"id"`
-	Type     string       `json:"type"`
-	Function FunctionCall `json:"function"`
+	ID           string          `json:"id"`
+	Type         string          `json:"type"`
+	Function     FunctionCall    `json:"function"`
+	ExtraContent json.RawMessage `json:"extra_content,omitempty"`
 }
 
 type FunctionCall struct {
@@ -67,8 +70,9 @@ type StreamDelta struct {
 }
 
 type StreamToolCall struct {
-	Index    int          `json:"index"`
-	ID       string       `json:"id,omitempty"`
-	Type     string       `json:"type,omitempty"`
-	Function FunctionCall `json:"function"`
+	Index        int              `json:"index"`
+	ID           string           `json:"id,omitempty"`
+	Type         string           `json:"type,omitempty"`
+	Function     FunctionCall     `json:"function"`
+	ExtraContent json.RawMessage  `json:"extra_content,omitempty"`
 }

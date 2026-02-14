@@ -553,6 +553,68 @@ func (a *App) DeleteConversation(id string) {
 	}
 }
 
+// ChatMessage is a frontend-friendly message format.
+type ChatMessage struct {
+	ID       string `json:"id"`
+	Role     string `json:"role"`
+	Content  string `json:"content"`
+	ToolName string `json:"tool_name,omitempty"`
+	ToolArgs string `json:"tool_args,omitempty"`
+}
+
+// GetConversationMessages returns messages for a conversation in frontend format.
+func (a *App) GetConversationMessages(id string) []ChatMessage {
+	if !a.ready || id == "" {
+		return []ChatMessage{}
+	}
+	conv := a.engine.GetConversation(id)
+	if conv == nil {
+		return []ChatMessage{}
+	}
+	var result []ChatMessage
+	seq := 0
+	for _, m := range conv.Messages {
+		switch m.Role {
+		case "system":
+			continue
+		case "user":
+			seq++
+			result = append(result, ChatMessage{
+				ID:      fmt.Sprintf("hist-%d", seq),
+				Role:    "user",
+				Content: m.Content,
+			})
+		case "assistant":
+			if m.Content != "" {
+				seq++
+				result = append(result, ChatMessage{
+					ID:      fmt.Sprintf("hist-%d", seq),
+					Role:    "assistant",
+					Content: m.Content,
+				})
+			}
+			for _, tc := range m.ToolCalls {
+				seq++
+				result = append(result, ChatMessage{
+					ID:       fmt.Sprintf("hist-%d", seq),
+					Role:     "tool_call",
+					ToolName: tc.Function.Name,
+					ToolArgs: tc.Function.Arguments,
+				})
+			}
+		case "tool":
+			seq++
+			result = append(result, ChatMessage{
+				ID:       fmt.Sprintf("hist-%d", seq),
+				Role:     "tool_result",
+				Content:  m.Content,
+				ToolName: m.ToolCallID,
+			})
+		}
+	}
+	return result
+}
+
 // ConfirmTool is called by the frontend to approve/reject a dangerous tool call.
 func (a *App) ConfirmTool(approved bool) {
 	select {

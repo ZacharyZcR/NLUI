@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
 import { useI18n } from "@/lib/i18n";
-import { Chat, ConfirmTool } from "../../../wailsjs/go/main/App";
+import { Chat, ConfirmTool, GetConversationMessages } from "../../../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 import type { Message } from "@/lib/types";
 
@@ -34,7 +34,24 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
 
   useEffect(() => {
     convIdRef.current = conversationId;
-    setMessages([]);
+    if (conversationId) {
+      const loadId = conversationId;
+      GetConversationMessages(loadId).then((msgs) => {
+        if (convIdRef.current !== loadId) return; // stale
+        setMessages(
+          (msgs || []).map((m: { id: string; role: string; content: string; tool_name?: string; tool_args?: string }) => ({
+            id: m.id,
+            role: m.role as Message["role"],
+            content: m.content || "",
+            toolName: m.tool_name,
+            toolArgs: m.tool_args,
+            timestamp: new Date(),
+          }))
+        );
+      });
+    } else {
+      setMessages([]);
+    }
   }, [conversationId]);
 
   const scrollToBottom = useCallback(() => {
@@ -154,8 +171,8 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
 
   return (
     <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 px-4 py-3">
-        <div className="space-y-3 max-w-3xl mx-auto">
+      <ScrollArea className="flex-1 px-2 sm:px-4 py-3">
+        <div className="space-y-3 max-w-none md:max-w-3xl mx-auto">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-[50vh] gap-3 select-none">
               <div className="text-4xl opacity-15">K</div>

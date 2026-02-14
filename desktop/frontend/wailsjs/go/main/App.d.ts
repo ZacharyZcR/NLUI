@@ -14,6 +14,8 @@ export function FetchModels(arg1:string,arg2:string):Promise<Array<string>>;
 
 export function GetConfigDir():Promise<string>;
 
+export function GetConversationMessages(arg1:string):Promise<Array<main.ChatMessage>>;
+
 export function GetCurrentConfig():Promise<Record<string, any>>;
 
 export function GetInfo():Promise<Record<string, any>>;

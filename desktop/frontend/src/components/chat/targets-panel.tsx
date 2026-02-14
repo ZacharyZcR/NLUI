@@ -118,8 +118,8 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
 
   return (
     <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 px-6 py-5">
-        <div className="max-w-lg mx-auto space-y-5">
+      <ScrollArea className="flex-1 px-3 sm:px-6 py-5">
+        <div className="max-w-none sm:max-w-lg mx-auto space-y-5">
 
           {/* Existing targets */}
           {targets.length > 0 ? (
@@ -199,7 +199,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
             )}
 
             {/* Name + Description */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">{t("targets.name")}</label>
                 <Input value={tgtName} onChange={(e) => setTgtName(e.target.value)} placeholder="my-backend" />
@@ -211,7 +211,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
             </div>
 
             {/* Auth */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">{t("targets.authType")}</label>
                 <div className="flex gap-1.5">

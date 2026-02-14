@@ -26,6 +26,10 @@ export function GetConfigDir() {
   return window['go']['main']['App']['GetConfigDir']();
 }
 
+export function GetConversationMessages(arg1) {
+  return window['go']['main']['App']['GetConversationMessages'](arg1);
+}
+
 export function GetCurrentConfig() {
   return window['go']['main']['App']['GetCurrentConfig']();
 }

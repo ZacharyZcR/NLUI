@@ -38,8 +38,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t bg-card/40 px-4 py-3 shrink-0">
-      <div className="flex gap-2 items-end max-w-3xl mx-auto">
+    <div className="border-t bg-card/40 px-2 sm:px-4 py-3 shrink-0">
+      <div className="flex gap-2 items-end max-w-none md:max-w-3xl mx-auto">
         <textarea
           ref={textareaRef}
           value={value}

@@ -23,6 +23,7 @@ export function ChatLayout() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<View>("chat");
   const [ready, setReady] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const checkReady = useCallback(async () => {
     try {
@@ -77,19 +78,45 @@ export function ChatLayout() {
 
   return (
     <div className="flex h-screen bg-background">
-      <ChatSidebar
-        conversations={conversations}
-        activeId={activeId}
-        onSelect={setActiveId}
-        onNew={handleNew}
-        onDelete={handleDelete}
-      />
+      {/* Sidebar — always visible on md+, overlay on <md */}
+      <div className="hidden md:flex">
+        <ChatSidebar
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onNew={handleNew}
+          onDelete={handleDelete}
+        />
+      </div>
+      {sidebarOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
+          <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+            <ChatSidebar
+              conversations={conversations}
+              activeId={activeId}
+              onSelect={setActiveId}
+              onNew={handleNew}
+              onDelete={handleDelete}
+              onClose={() => setSidebarOpen(false)}
+            />
+          </div>
+        </>
+      )}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Title bar — draggable for Wails window */}
         <header className="wails-drag flex items-center justify-between px-5 h-12 border-b bg-card/60 backdrop-blur-sm shrink-0">
-          <h1 className="text-sm font-semibold tracking-wide select-none">
-            {t("app.title")}
-          </h1>
+          <div className="flex items-center gap-2">
+            <button
+              className="wails-nodrag md:hidden flex items-center justify-center w-7 h-7 rounded hover:bg-accent transition-colors text-sm"
+              onClick={() => setSidebarOpen(true)}
+            >
+              &#9776;
+            </button>
+            <h1 className="text-sm font-semibold tracking-wide select-none">
+              {t("app.title")}
+            </h1>
+          </div>
           <nav className="wails-nodrag flex items-center gap-0.5">
             {(["targets", "tools", "settings"] as const).map((key) => (
               <Button

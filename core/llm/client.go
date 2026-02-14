@@ -166,6 +166,9 @@ func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, to
 				existing.Function.Name = tc.Function.Name
 			}
 			existing.Function.Arguments += tc.Function.Arguments
+			if len(tc.ExtraContent) > 0 {
+				existing.ExtraContent = tc.ExtraContent
+			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
