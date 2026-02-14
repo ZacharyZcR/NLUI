@@ -23,10 +23,17 @@ interface PendingConfirm {
   arguments: string;
 }
 
+interface UsageInfo {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 export function ChatMain({ conversationId, onConversationCreated }: ChatMainProps) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const convIdRef = useRef(conversationId);
@@ -110,9 +117,12 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         }
         case "done": {
           streamIdRef.current = "";
-          const d = event.data as { conversation_id?: string };
+          const d = event.data as { conversation_id?: string; usage?: UsageInfo };
           if (d.conversation_id && !convIdRef.current) {
             onConversationCreated(d.conversation_id);
+          }
+          if (d.usage) {
+            setUsage(d.usage);
           }
           setLoading(false);
           scrollToBottom();
@@ -154,6 +164,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         { id: nextId(), role: "user", content: text, timestamp: new Date() },
       ]);
       setLoading(true);
+      setUsage(null);
       scrollToBottom();
       try {
         await Chat(text, conversationId || "");
@@ -223,7 +234,14 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           <div ref={scrollRef} />
         </div>
       </div>
-      <ChatInput onSend={handleSend} disabled={loading} />
+      <div className="relative">
+        {usage && (
+          <div className="absolute -top-6 right-2 sm:right-4 flex items-center gap-2 text-[10px] text-muted-foreground/50 font-mono select-none">
+            <span>{usage.prompt_tokens}+{usage.completion_tokens}={usage.total_tokens} tokens</span>
+          </div>
+        )}
+        <ChatInput onSend={handleSend} disabled={loading} />
+      </div>
     </div>
   );
 }

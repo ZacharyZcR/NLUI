@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useI18n } from "@/lib/i18n";
 
 interface ConversationInfo {
@@ -54,7 +53,7 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
           {t("sidebar.new")}
         </Button>
       </div>
-      <ScrollArea className="flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-2 pb-2 space-y-0.5">
           {conversations.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-10 opacity-50">
@@ -92,7 +91,7 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

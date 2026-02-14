@@ -41,6 +41,12 @@ type ContentDeltaEvent struct {
 	Delta string `json:"delta"`
 }
 
+type UsageEvent struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 type Loop struct {
 	client       *llm.Client
 	executor     Executor
@@ -81,12 +87,20 @@ func isDangerous(toolName, argsJSON string) bool {
 }
 
 func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool, authToken string, onEvent func(Event)) ([]llm.Message, error) {
+	var totalUsage UsageEvent
+
 	for i := 0; i < MaxIterations; i++ {
 		truncated := truncateMessages(messages, l.maxCtxTokens)
-		msg, err := l.client.ChatStreamWithTools(ctx, truncated, tools, func(delta string) {
+		msg, usage, err := l.client.ChatStreamWithTools(ctx, truncated, tools, func(delta string) {
 			onEvent(Event{Type: "content_delta", Data: ContentDeltaEvent{Delta: delta}})
 		})
+		if usage != nil {
+			totalUsage.PromptTokens += usage.PromptTokens
+			totalUsage.CompletionTokens += usage.CompletionTokens
+			totalUsage.TotalTokens += usage.TotalTokens
+		}
 		if err != nil {
+			emitUsage(onEvent, totalUsage)
 			return messages, fmt.Errorf("LLM call failed: %w", err)
 		}
 
@@ -94,6 +108,7 @@ func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool
 
 		if len(msg.ToolCalls) == 0 {
 			onEvent(Event{Type: "content", Data: ContentEvent{Text: msg.Content}})
+			emitUsage(onEvent, totalUsage)
 			return messages, nil
 		}
 
@@ -141,5 +156,12 @@ func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool
 		}
 	}
 
+	emitUsage(onEvent, totalUsage)
 	return messages, fmt.Errorf("max iterations (%d) reached", MaxIterations)
+}
+
+func emitUsage(onEvent func(Event), u UsageEvent) {
+	if u.TotalTokens > 0 {
+		onEvent(Event{Type: "usage", Data: u})
+	}
 }

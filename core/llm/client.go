@@ -80,11 +80,12 @@ func (c *Client) Chat(ctx context.Context, messages []Message, tools []Tool) (*C
 // It assembles the full Message (including tool_calls) from deltas,
 // and calls onDelta for each content text chunk (for live UI updates).
 // Returns the fully assembled assistant Message.
-func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, tools []Tool, onDelta func(string)) (*Message, error) {
+func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, tools []Tool, onDelta func(string)) (*Message, *Usage, error) {
 	req := ChatRequest{
-		Model:    c.model,
-		Messages: messages,
-		Stream:   true,
+		Model:         c.model,
+		Messages:      messages,
+		Stream:        true,
+		StreamOptions: &StreamOptions{IncludeUsage: true},
 	}
 	if len(tools) > 0 {
 		req.Tools = tools
@@ -92,12 +93,12 @@ func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, to
 
 	body, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("marshal request: %w", err)
+		return nil, nil, fmt.Errorf("marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.apiBase+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		return nil, nil, fmt.Errorf("create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	if c.apiKey != "" {
@@ -106,18 +107,19 @@ func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, to
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
+		return nil, nil, fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("LLM API error %d: %s", resp.StatusCode, string(respBody))
+		return nil, nil, fmt.Errorf("LLM API error %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	// Assemble message from stream deltas
 	assembled := &Message{Role: "assistant"}
 	toolCallMap := make(map[int]*ToolCall)
+	var usage *Usage
 
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
@@ -133,6 +135,12 @@ func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, to
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue
 		}
+
+		// Capture usage from the final chunk
+		if chunk.Usage != nil {
+			usage = chunk.Usage
+		}
+
 		if len(chunk.Choices) == 0 {
 			continue
 		}
@@ -172,7 +180,7 @@ func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, to
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil, usage, err
 	}
 
 	// Convert map to sorted slice
@@ -189,7 +197,7 @@ func (c *Client) ChatStreamWithTools(ctx context.Context, messages []Message, to
 		}
 	}
 
-	return assembled, nil
+	return assembled, usage, nil
 }
 
 func (c *Client) ChatStream(ctx context.Context, messages []Message, onChunk func(StreamChunk)) error {

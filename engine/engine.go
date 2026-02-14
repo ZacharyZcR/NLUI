@@ -55,11 +55,20 @@ func New(cfg Config) *Engine {
 // Returns the conversation ID used.
 func (e *Engine) Chat(ctx context.Context, convID, message, authToken string, onEvent func(Event)) (string, error) {
 	conv := e.convMgr.Get(convID)
-	if conv == nil {
+	isNew := conv == nil
+	if isNew {
 		conv = e.convMgr.Create("", e.systemPrompt)
 	}
 
 	conv.Messages = append(conv.Messages, llm.Message{Role: "user", Content: message})
+
+	if isNew {
+		title := message
+		if len([]rune(title)) > 30 {
+			title = string([]rune(title)[:30]) + "..."
+		}
+		e.convMgr.UpdateTitle(conv.ID, title)
+	}
 
 	finalMessages, err := e.loop.Run(ctx, conv.Messages, e.tools, authToken, onEvent)
 	if err != nil {

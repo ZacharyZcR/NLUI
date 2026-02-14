@@ -508,7 +508,13 @@ func (a *App) Chat(message, conversationID string) string {
 		return ""
 	}
 
+	var lastUsage interface{}
+
 	convID, err := a.engine.Chat(a.ctx, conversationID, message, "", func(event engine.Event) {
+		if event.Type == "usage" {
+			lastUsage = event.Data
+			return
+		}
 		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
 			"type": event.Type,
 			"data": event.Data,
@@ -522,9 +528,16 @@ func (a *App) Chat(message, conversationID string) string {
 		})
 	}
 
+	doneData := map[string]interface{}{
+		"conversation_id": convID,
+	}
+	if lastUsage != nil {
+		doneData["usage"] = lastUsage
+	}
+
 	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
 		"type": "done",
-		"data": map[string]string{"conversation_id": convID},
+		"data": doneData,
 	})
 
 	return convID

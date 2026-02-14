@@ -80,6 +80,15 @@ func (m *Manager) List() []*Conversation {
 	return list
 }
 
+func (m *Manager) UpdateTitle(id, title string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if conv, ok := m.convs[id]; ok {
+		conv.Title = title
+		m.saveLocked(conv)
+	}
+}
+
 func (m *Manager) UpdateMessages(id string, messages []llm.Message) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
