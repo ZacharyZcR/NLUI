@@ -5,11 +5,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/ZacharyZcR/Kelper/bootstrap"
 	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/core/bootstrap"
-	"github.com/ZacharyZcR/Kelper/core/conversation"
 	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/core/toolloop"
+	"github.com/ZacharyZcR/Kelper/engine"
 	"github.com/ZacharyZcR/Kelper/mcp"
 	"github.com/ZacharyZcR/Kelper/server"
 )
@@ -49,7 +48,7 @@ func main() {
 	}
 	defer res.Close()
 
-	// MCP Server mode: expose tools via MCP protocol
+	// MCP Server mode: expose tools via MCP protocol (no Engine needed)
 	if mcpStdio {
 		mcpTools := llmToolsToMCP(res.Tools)
 		srv := mcp.NewServer(mcpTools, res.Router)
@@ -69,10 +68,13 @@ func main() {
 	}
 
 	// Default: HTTP chat server
-	llmClient := llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model)
-	loop := toolloop.New(llmClient, res.Router)
-	loop.SetMaxContextTokens(cfg.LLM.MaxCtxTokens)
-	convMgr := conversation.NewManager("")
+	eng := engine.New(engine.Config{
+		LLM:          llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model),
+		Executor:     res.Router,
+		Tools:        res.Tools,
+		SystemPrompt: res.SystemPrompt,
+		MaxCtxTokens: cfg.LLM.MaxCtxTokens,
+	})
 
 	// Optionally also start MCP SSE server in background
 	if cfg.MCP.Server.SSEPort > 0 {
@@ -85,7 +87,7 @@ func main() {
 		}()
 	}
 
-	srv := server.New(cfg, loop, convMgr, res.Tools, res.SystemPrompt)
+	srv := server.New(cfg, eng)
 	if err := srv.Run(); err != nil {
 		log.Fatalf("server: %v", err)
 	}

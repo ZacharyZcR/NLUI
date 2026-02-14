@@ -6,20 +6,15 @@ import (
 	"strings"
 
 	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/core/conversation"
-	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/core/toolloop"
+	"github.com/ZacharyZcR/Kelper/engine"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
-	cfg          *config.Config
-	loop         *toolloop.Loop
-	convMgr      *conversation.Manager
-	tools        []llm.Tool
-	systemPrompt string
-	router       *gin.Engine
+	cfg    *config.Config
+	engine *engine.Engine
+	router *gin.Engine
 }
 
 type ChatRequest struct {
@@ -27,13 +22,10 @@ type ChatRequest struct {
 	Message        string `json:"message"`
 }
 
-func New(cfg *config.Config, loop *toolloop.Loop, convMgr *conversation.Manager, tools []llm.Tool, systemPrompt string) *Server {
+func New(cfg *config.Config, eng *engine.Engine) *Server {
 	s := &Server{
-		cfg:          cfg,
-		loop:         loop,
-		convMgr:      convMgr,
-		tools:        tools,
-		systemPrompt: systemPrompt,
+		cfg:    cfg,
+		engine: eng,
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -68,11 +60,11 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) health(c *gin.Context) {
-	c.JSON(200, gin.H{"status": "ok", "tools": len(s.tools)})
+	c.JSON(200, gin.H{"status": "ok", "tools": len(s.engine.Tools())})
 }
 
 func (s *Server) info(c *gin.Context) {
-	c.JSON(200, gin.H{"language": s.cfg.Language, "tools": len(s.tools)})
+	c.JSON(200, gin.H{"language": s.cfg.Language, "tools": len(s.engine.Tools())})
 }
 
 func (s *Server) chat(c *gin.Context) {
@@ -86,16 +78,6 @@ func (s *Server) chat(c *gin.Context) {
 		return
 	}
 
-	conv := s.convMgr.Get(req.ConversationID)
-	if conv == nil {
-		conv = s.convMgr.Create("", s.systemPrompt)
-	}
-
-	conv.Messages = append(conv.Messages, llm.Message{
-		Role:    "user",
-		Content: req.Message,
-	})
-
 	authToken := ""
 	if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		authToken = strings.TrimPrefix(h, "Bearer ")
@@ -106,7 +88,7 @@ func (s *Server) chat(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	finalMessages, err := s.loop.Run(c.Request.Context(), conv.Messages, s.tools, authToken, func(event toolloop.Event) {
+	convID, err := s.engine.Chat(c.Request.Context(), req.ConversationID, req.Message, authToken, func(event engine.Event) {
 		if data, err := json.Marshal(event.Data); err == nil {
 			fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, string(data))
 			c.Writer.Flush()
@@ -120,16 +102,14 @@ func (s *Server) chat(c *gin.Context) {
 		}
 	}
 
-	s.convMgr.UpdateMessages(conv.ID, finalMessages)
-
-	if doneData, err := json.Marshal(gin.H{"conversation_id": conv.ID}); err == nil {
+	if doneData, err := json.Marshal(gin.H{"conversation_id": convID}); err == nil {
 		fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", string(doneData))
 		c.Writer.Flush()
 	}
 }
 
 func (s *Server) listConversations(c *gin.Context) {
-	c.JSON(200, s.convMgr.List())
+	c.JSON(200, s.engine.ListConversations())
 }
 
 func (s *Server) createConversation(c *gin.Context) {
@@ -140,12 +120,12 @@ func (s *Server) createConversation(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	conv := s.convMgr.Create(req.Title, s.systemPrompt)
+	conv := s.engine.CreateConversation(req.Title)
 	c.JSON(201, conv)
 }
 
 func (s *Server) getConversation(c *gin.Context) {
-	conv := s.convMgr.Get(c.Param("id"))
+	conv := s.engine.GetConversation(c.Param("id"))
 	if conv == nil {
 		c.JSON(404, gin.H{"error": "not found"})
 		return
@@ -154,6 +134,6 @@ func (s *Server) getConversation(c *gin.Context) {
 }
 
 func (s *Server) deleteConversation(c *gin.Context) {
-	s.convMgr.Delete(c.Param("id"))
+	s.engine.DeleteConversation(c.Param("id"))
 	c.Status(204)
 }

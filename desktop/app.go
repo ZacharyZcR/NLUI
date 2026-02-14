@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ZacharyZcR/Kelper/bootstrap"
 	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/core/bootstrap"
 	"github.com/ZacharyZcR/Kelper/core/conversation"
 	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/core/toolloop"
+	"github.com/ZacharyZcR/Kelper/engine"
 	"github.com/ZacharyZcR/Kelper/gateway"
 	"github.com/ZacharyZcR/Kelper/mcp"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -22,15 +22,13 @@ import (
 )
 
 type App struct {
-	ctx          context.Context
-	loop         *toolloop.Loop
-	convMgr      *conversation.Manager
-	tools        []llm.Tool
-	systemPrompt string
-	language     string
-	ready        bool
-	confirmCh    chan bool
-	mcpClients   map[string]*mcp.Client
+	ctx        context.Context
+	engine     *engine.Engine
+	convMgr    *conversation.Manager // survives reinit
+	language   string
+	ready      bool
+	confirmCh  chan bool
+	mcpClients map[string]*mcp.Client
 }
 
 type ConversationInfo struct {
@@ -103,20 +101,8 @@ func (a *App) initialize() {
 	}
 
 	llmClient := llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model)
-
 	a.language = cfg.Language
-	a.systemPrompt = bootstrap.BuildSystemPrompt(cfg.Language, cfg.Targets, allTools)
-	a.tools = allTools
-	a.loop = toolloop.New(llmClient, router)
-	a.loop.SetMaxContextTokens(cfg.LLM.MaxCtxTokens)
-	a.confirmCh = make(chan bool, 1)
-	a.loop.SetConfirm(func(toolName, argsJSON string) bool {
-		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
-			"name":      toolName,
-			"arguments": argsJSON,
-		})
-		return <-a.confirmCh
-	})
+
 	convDir := ""
 	if dir, err := config.GlobalDir(); err == nil {
 		convDir = filepath.Join(dir, "conversations")
@@ -124,6 +110,25 @@ func (a *App) initialize() {
 	if a.convMgr == nil {
 		a.convMgr = conversation.NewManager(convDir)
 	}
+
+	a.confirmCh = make(chan bool, 1)
+
+	eng := engine.New(engine.Config{
+		LLM:          llmClient,
+		Executor:     router,
+		Tools:        allTools,
+		SystemPrompt: bootstrap.BuildSystemPrompt(cfg.Language, cfg.Targets, allTools),
+		MaxCtxTokens: cfg.LLM.MaxCtxTokens,
+		ConvMgr:      a.convMgr,
+	})
+	eng.SetConfirm(func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	})
+	a.engine = eng
 	a.ready = true
 
 	fmt.Fprintf(os.Stderr, "Kelper ready: %d tools\n", len(allTools))
@@ -242,6 +247,10 @@ func (a *App) GetCurrentConfig() map[string]interface{} {
 	if err != nil {
 		return map[string]interface{}{"exists": false}
 	}
+	toolCount := 0
+	if a.engine != nil {
+		toolCount = len(a.engine.Tools())
+	}
 	return map[string]interface{}{
 		"exists":   true,
 		"api_base": cfg.LLM.APIBase,
@@ -249,7 +258,7 @@ func (a *App) GetCurrentConfig() map[string]interface{} {
 		"model":    cfg.LLM.Model,
 		"language": cfg.Language,
 		"ready":    a.ready,
-		"tools":    len(a.tools),
+		"tools":    toolCount,
 	}
 }
 
@@ -439,14 +448,7 @@ func (a *App) Chat(message, conversationID string) string {
 		return ""
 	}
 
-	conv := a.convMgr.Get(conversationID)
-	if conv == nil {
-		conv = a.convMgr.Create("", a.systemPrompt)
-	}
-
-	conv.Messages = append(conv.Messages, llm.Message{Role: "user", Content: message})
-
-	finalMsgs, err := a.loop.Run(a.ctx, conv.Messages, a.tools, "", func(event toolloop.Event) {
+	convID, err := a.engine.Chat(a.ctx, conversationID, message, "", func(event engine.Event) {
 		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
 			"type": event.Type,
 			"data": event.Data,
@@ -460,21 +462,19 @@ func (a *App) Chat(message, conversationID string) string {
 		})
 	}
 
-	a.convMgr.UpdateMessages(conv.ID, finalMsgs)
-
 	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
 		"type": "done",
-		"data": map[string]string{"conversation_id": conv.ID},
+		"data": map[string]string{"conversation_id": convID},
 	})
 
-	return conv.ID
+	return convID
 }
 
 func (a *App) ListConversations() []ConversationInfo {
 	if !a.ready {
 		return nil
 	}
-	convs := a.convMgr.List()
+	convs := a.engine.ListConversations()
 	result := make([]ConversationInfo, 0, len(convs))
 	for _, c := range convs {
 		result = append(result, ConversationInfo{
@@ -489,7 +489,7 @@ func (a *App) ListConversations() []ConversationInfo {
 
 func (a *App) DeleteConversation(id string) {
 	if a.ready {
-		a.convMgr.Delete(id)
+		a.engine.DeleteConversation(id)
 	}
 }
 
@@ -511,8 +511,11 @@ type ToolInfo struct {
 
 // ListTools returns all loaded tools with target grouping.
 func (a *App) ListTools() []ToolInfo {
+	if a.engine == nil {
+		return nil
+	}
 	var result []ToolInfo
-	for _, t := range a.tools {
+	for _, t := range a.engine.Tools() {
 		targetName := ""
 		funcName := t.Function.Name
 		if parts := strings.SplitN(t.Function.Name, "__", 2); len(parts) == 2 {
@@ -536,9 +539,13 @@ func (a *App) GetConfigDir() string {
 }
 
 func (a *App) GetInfo() map[string]interface{} {
+	toolCount := 0
+	if a.engine != nil {
+		toolCount = len(a.engine.Tools())
+	}
 	return map[string]interface{}{
 		"language": a.language,
-		"tools":    len(a.tools),
+		"tools":    toolCount,
 		"ready":    a.ready,
 	}
 }
