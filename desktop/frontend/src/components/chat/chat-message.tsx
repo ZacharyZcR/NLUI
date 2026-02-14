@@ -3,6 +3,8 @@ import { MdPreview } from "md-editor-rt";
 import "md-editor-rt/lib/preview.css";
 import { useI18n } from "@/lib/i18n";
 import type { Message } from "@/lib/types";
+import { splitRenderBlocks } from "@/lib/render-blocks";
+import { RichResult } from "./renderers/rich-result";
 
 export function ChatMessage({ message }: { message: Message }) {
   if (message.role === "user") {
@@ -78,10 +80,8 @@ function ToolResultMessage({ name, content }: { name?: string; content: string }
           )}
         </div>
         {open && (
-          <div className="mt-1.5 relative group">
-            <pre className="text-[11px] text-muted-foreground/80 font-mono bg-muted/50 rounded-md px-3 py-2 overflow-x-auto whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed">
-              {formatJSON(content)}
-            </pre>
+          <div className="mt-1.5 relative group" onClick={(e) => e.stopPropagation()}>
+            <RichResult raw={content} />
             <CopyBtn text={content} />
             {lines > 5 && (
               <span className="absolute bottom-1.5 right-1.5 text-[9px] text-muted-foreground/30 font-mono">
@@ -98,17 +98,45 @@ function ToolResultMessage({ name, content }: { name?: string; content: string }
 /* ── Assistant ── */
 function AssistantMessage({ content }: { content: string }) {
   const { theme } = useI18n();
+  const blocks = splitRenderBlocks(content);
+  const hasRenderBlocks = blocks.length > 1 || blocks[0]?.type === "render";
+
+  if (!hasRenderBlocks) {
+    return (
+      <div className="flex justify-start group">
+        <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-bl-md bg-muted/80 px-4 py-2.5 shadow-sm overflow-hidden relative">
+          <MdPreview
+            modelValue={content}
+            theme={theme}
+            previewTheme="github"
+            codeTheme="github"
+            language="en-US"
+            className="kelper-md"
+          />
+          <CopyBtn text={content} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-start group">
-      <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-bl-md bg-muted/80 px-4 py-2.5 shadow-sm overflow-hidden relative">
-        <MdPreview
-          modelValue={content}
-          theme={theme}
-          previewTheme="github"
-          codeTheme="github"
-          language="en-US"
-          className="kelper-md"
-        />
+      <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-bl-md bg-muted/80 px-4 py-2.5 shadow-sm overflow-hidden relative space-y-2">
+        {blocks.map((block, i) =>
+          block.type === "markdown" ? (
+            <MdPreview
+              key={i}
+              modelValue={block.content}
+              theme={theme}
+              previewTheme="github"
+              codeTheme="github"
+              language="en-US"
+              className="kelper-md"
+            />
+          ) : (
+            <RichResult key={i} raw={block.data} forceType={block.hint} />
+          )
+        )}
         <CopyBtn text={content} />
       </div>
     </div>
