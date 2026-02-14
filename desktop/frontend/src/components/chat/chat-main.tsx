@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChatMessage } from "./chat-message";
@@ -170,8 +169,8 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
   );
 
   return (
-    <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 px-2 sm:px-4 py-3">
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 sm:px-4 py-3">
         <div className="space-y-3 max-w-none md:max-w-3xl mx-auto">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-[50vh] gap-3 select-none">
@@ -223,7 +222,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           )}
           <div ref={scrollRef} />
         </div>
-      </ScrollArea>
+      </div>
       <ChatInput onSend={handleSend} disabled={loading} />
     </div>
   );

@@ -77,7 +77,7 @@ export function ChatLayout() {
   const toggleView = (target: View) => setView(view === target ? "chat" : target);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar — always visible on md+, overlay on <md */}
       <div className="hidden md:flex">
         <ChatSidebar
@@ -103,7 +103,7 @@ export function ChatLayout() {
           </div>
         </>
       )}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Title bar — draggable for Wails window */}
         <header className="wails-drag flex items-center justify-between px-5 h-12 border-b bg-card/60 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-2">

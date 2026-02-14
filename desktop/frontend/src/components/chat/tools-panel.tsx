@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useI18n } from "@/lib/i18n";
 import { ListTools, GetConfigDir } from "../../../wailsjs/go/main/App";
 
@@ -53,8 +53,8 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
   }, {});
 
   return (
-    <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 px-3 sm:px-6 py-5">
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5">
         <div className="max-w-none sm:max-w-lg mx-auto space-y-5">
           {configDir && (
             <div className="text-[11px] text-muted-foreground/40 font-mono truncate">
@@ -112,7 +112,7 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
             </section>
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useI18n } from "@/lib/i18n";
 import {
   ProbeProviders,
@@ -152,8 +152,8 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
   const proxyDirty = proxy !== proxySaved;
 
   return (
-    <div className="flex flex-col flex-1 h-full">
-      <ScrollArea className="flex-1 px-3 sm:px-6 py-5">
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5">
         <div className="max-w-none sm:max-w-lg mx-auto space-y-5">
 
           {/* Proxy */}
@@ -289,7 +289,7 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
             {saving ? t("settings.saving") : t("settings.save")}
           </Button>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
