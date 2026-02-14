@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,7 +109,9 @@ func (m *Manager) saveLocked(conv *Conversation) {
 	if err != nil {
 		return
 	}
-	os.WriteFile(filepath.Join(m.dataDir, conv.ID+".json"), data, 0644)
+	if err := os.WriteFile(filepath.Join(m.dataDir, conv.ID+".json"), data, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "save conversation %s: %v\n", conv.ID, err)
+	}
 }
 
 func (m *Manager) loadAll() {

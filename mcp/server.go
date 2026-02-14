@@ -46,7 +46,11 @@ func (s *Server) RunStdio() error {
 			continue
 		}
 
-		data, _ := json.Marshal(resp)
+		data, err := json.Marshal(resp)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "marshal response: %v\n", err)
+			continue
+		}
 		fmt.Fprintf(os.Stdout, "%s\n", string(data))
 	}
 	return scanner.Err()
@@ -99,7 +103,11 @@ func (s *Server) RunSSE(port int) error {
 			c.JSON(404, gin.H{"error": "session not found"})
 			return
 		}
-		ch := val.(chan []byte)
+		ch, ok := val.(chan []byte)
+		if !ok {
+			c.JSON(500, gin.H{"error": "invalid session"})
+			return
+		}
 
 		var req RPCRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -109,7 +117,11 @@ func (s *Server) RunSSE(port int) error {
 
 		resp := s.handleRequest(req)
 		if resp != nil {
-			data, _ := json.Marshal(resp)
+			data, err := json.Marshal(resp)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "marshal response"})
+				return
+			}
 			ch <- data
 		}
 
@@ -143,13 +155,19 @@ func (s *Server) handleInitialize(req RPCRequest) *RPCResponse {
 		ServerInfo:      EntityInfo{Name: "kelper", Version: "0.1.0"},
 		Capabilities:    ServerCapabilities{Tools: &ToolsCapability{}},
 	}
-	data, _ := json.Marshal(result)
+	data, err := json.Marshal(result)
+	if err != nil {
+		return s.errorResponse(req.ID, -32603, "marshal init result")
+	}
 	return s.resultResponse(req.ID, data)
 }
 
 func (s *Server) handleToolsList(req RPCRequest) *RPCResponse {
 	result := ToolsListResult{Tools: s.tools}
-	data, _ := json.Marshal(result)
+	data, err := json.Marshal(result)
+	if err != nil {
+		return s.errorResponse(req.ID, -32603, "marshal tools list")
+	}
 	return s.resultResponse(req.ID, data)
 }
 
@@ -159,7 +177,10 @@ func (s *Server) handleToolsCall(req RPCRequest) *RPCResponse {
 		return s.errorResponse(req.ID, -32602, "invalid params")
 	}
 
-	argsJSON, _ := json.Marshal(params.Arguments)
+	argsJSON, err := json.Marshal(params.Arguments)
+	if err != nil {
+		return s.errorResponse(req.ID, -32602, "marshal arguments")
+	}
 	output, err := s.executor.Execute(context.Background(), params.Name, string(argsJSON), "")
 
 	if err != nil {
@@ -167,14 +188,20 @@ func (s *Server) handleToolsCall(req RPCRequest) *RPCResponse {
 			Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("Error: %s", err.Error())}},
 			IsError: true,
 		}
-		data, _ := json.Marshal(result)
+		data, marshalErr := json.Marshal(result)
+		if marshalErr != nil {
+			return s.errorResponse(req.ID, -32603, "marshal error result")
+		}
 		return s.resultResponse(req.ID, data)
 	}
 
 	result := ToolCallResult{
 		Content: []ContentBlock{{Type: "text", Text: output}},
 	}
-	data, _ := json.Marshal(result)
+	data, err := json.Marshal(result)
+	if err != nil {
+		return s.errorResponse(req.ID, -32603, "marshal result")
+	}
 	return s.resultResponse(req.ID, data)
 }
 

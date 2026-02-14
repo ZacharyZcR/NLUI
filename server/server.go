@@ -39,7 +39,12 @@ func New(cfg *config.Config, loop *toolloop.Loop, convMgr *conversation.Manager,
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(cors.Default())
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowMethods:     []string{"GET", "POST", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	api := r.Group("/api")
 	{
@@ -102,22 +107,25 @@ func (s *Server) chat(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 
 	finalMessages, err := s.loop.Run(c.Request.Context(), conv.Messages, s.tools, authToken, func(event toolloop.Event) {
-		data, _ := json.Marshal(event.Data)
-		fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, string(data))
-		c.Writer.Flush()
+		if data, err := json.Marshal(event.Data); err == nil {
+			fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, string(data))
+			c.Writer.Flush()
+		}
 	})
 
 	if err != nil {
-		errData, _ := json.Marshal(gin.H{"error": err.Error()})
-		fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", string(errData))
-		c.Writer.Flush()
+		if errData, marshalErr := json.Marshal(gin.H{"error": err.Error()}); marshalErr == nil {
+			fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", string(errData))
+			c.Writer.Flush()
+		}
 	}
 
 	s.convMgr.UpdateMessages(conv.ID, finalMessages)
 
-	doneData, _ := json.Marshal(gin.H{"conversation_id": conv.ID})
-	fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", string(doneData))
-	c.Writer.Flush()
+	if doneData, err := json.Marshal(gin.H{"conversation_id": conv.ID}); err == nil {
+		fmt.Fprintf(c.Writer, "event: done\ndata: %s\n\n", string(doneData))
+		c.Writer.Flush()
+	}
 }
 
 func (s *Server) listConversations(c *gin.Context) {

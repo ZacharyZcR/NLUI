@@ -52,7 +52,7 @@ func (c *Caller) Execute(ctx context.Context, toolName, argsJSON, authToken stri
 	for _, p := range ep.Params {
 		if p.In == "path" {
 			if val, ok := args[p.Name]; ok {
-				urlPath = strings.ReplaceAll(urlPath, "{"+p.Name+"}", fmt.Sprint(val))
+				urlPath = strings.ReplaceAll(urlPath, "{"+p.Name+"}", url.PathEscape(fmt.Sprint(val)))
 				delete(args, p.Name)
 			}
 		}
@@ -60,7 +60,10 @@ func (c *Caller) Execute(ctx context.Context, toolName, argsJSON, authToken stri
 	fullURL := strings.TrimRight(ep.BaseURL, "/") + urlPath
 
 	// Query parameters
-	reqURL, _ := url.Parse(fullURL)
+	reqURL, err := url.Parse(fullURL)
+	if err != nil {
+		return "", fmt.Errorf("parse url: %w", err)
+	}
 	q := reqURL.Query()
 	for _, p := range ep.Params {
 		if p.In == "query" {

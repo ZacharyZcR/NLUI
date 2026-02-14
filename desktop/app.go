@@ -58,7 +58,7 @@ func (a *App) startup(ctx context.Context) {
 	if globalPath != "" {
 		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
 			if data, err := os.ReadFile("kelper.yaml"); err == nil {
-				os.WriteFile(globalPath, data, 0644)
+				os.WriteFile(globalPath, data, 0600)
 			}
 		}
 	}
@@ -261,7 +261,7 @@ func (a *App) SaveLLMConfig(apiBase, apiKey, model string) string {
 	if err != nil {
 		return err.Error()
 	}
-	if err := os.WriteFile(a.configPath(), data, 0644); err != nil {
+	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
 		return err.Error()
 	}
 
@@ -420,7 +420,7 @@ func (a *App) AddTarget(name, baseURL, spec, authType, authToken, description st
 	if err != nil {
 		return err.Error()
 	}
-	if err := os.WriteFile(a.configPath(), data, 0644); err != nil {
+	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
 		return err.Error()
 	}
 
@@ -447,7 +447,7 @@ func (a *App) RemoveTarget(name string) string {
 	if err != nil {
 		return err.Error()
 	}
-	if err := os.WriteFile(a.configPath(), data, 0644); err != nil {
+	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
 		return err.Error()
 	}
 

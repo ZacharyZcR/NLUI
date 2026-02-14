@@ -28,7 +28,7 @@ var probePaths = []string{
 // LoadSpec loads an OpenAPI spec from a file path or URL.
 func LoadSpec(specPath string) (*openapi3.T, error) {
 	loader := openapi3.NewLoader()
-	loader.IsExternalRefsAllowed = true
+	loader.IsExternalRefsAllowed = false
 
 	if strings.HasPrefix(specPath, "http://") || strings.HasPrefix(specPath, "https://") {
 		uri, err := url.Parse(specPath)
@@ -44,7 +44,7 @@ func LoadSpec(specPath string) (*openapi3.T, error) {
 func DiscoverSpec(baseURL string) (*openapi3.T, string, error) {
 	baseURL = strings.TrimRight(baseURL, "/")
 	loader := openapi3.NewLoader()
-	loader.IsExternalRefsAllowed = true
+	loader.IsExternalRefsAllowed = false
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	for _, path := range probePaths {

@@ -107,10 +107,16 @@ func (c *Client) send(method string, params interface{}) (json.RawMessage, error
 	c.pending.Store(id, ch)
 	defer c.pending.Delete(id)
 
-	rawID, _ := json.Marshal(id)
+	rawID, err := json.Marshal(id)
+	if err != nil {
+		return nil, fmt.Errorf("marshal id: %w", err)
+	}
 	var rawParams json.RawMessage
 	if params != nil {
-		rawParams, _ = json.Marshal(params)
+		rawParams, err = json.Marshal(params)
+		if err != nil {
+			return nil, fmt.Errorf("marshal params: %w", err)
+		}
 	}
 
 	req := RPCRequest{
@@ -121,8 +127,12 @@ func (c *Client) send(method string, params interface{}) (json.RawMessage, error
 	}
 
 	c.mu.Lock()
-	data, _ := json.Marshal(req)
-	_, err := fmt.Fprintf(c.stdin, "%s\n", string(data))
+	data, err := json.Marshal(req)
+	if err != nil {
+		c.mu.Unlock()
+		return nil, fmt.Errorf("marshal request: %w", err)
+	}
+	_, err = fmt.Fprintf(c.stdin, "%s\n", string(data))
 	c.mu.Unlock()
 
 	if err != nil {
@@ -149,8 +159,11 @@ func (c *Client) notify(method string) error {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	data, _ := json.Marshal(req)
-	_, err := fmt.Fprintf(c.stdin, "%s\n", string(data))
+	data, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("marshal notify: %w", err)
+	}
+	_, err = fmt.Fprintf(c.stdin, "%s\n", string(data))
 	return err
 }
 
@@ -188,7 +201,9 @@ func (c *Client) Name() string {
 func (c *Client) CallTool(ctx context.Context, name, argsJSON string) (string, error) {
 	var args map[string]interface{}
 	if argsJSON != "" {
-		json.Unmarshal([]byte(argsJSON), &args)
+		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+			return "", fmt.Errorf("parse arguments: %w", err)
+		}
 	}
 
 	result, err := c.send("tools/call", ToolCallParams{Name: name, Arguments: args})
