@@ -62,6 +62,14 @@ export function SaveLLMConfig(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveLLMConfig'](arg1, arg2, arg3);
 }
 
+export function SaveProxy(arg1) {
+  return window['go']['main']['App']['SaveProxy'](arg1);
+}
+
+export function TestProxy(arg1) {
+  return window['go']['main']['App']['TestProxy'](arg1);
+}
+
 export function UploadSpec() {
   return window['go']['main']['App']['UploadSpec']();
 }

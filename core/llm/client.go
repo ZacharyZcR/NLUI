@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -18,12 +19,18 @@ type Client struct {
 	httpClient *http.Client
 }
 
-func NewClient(apiBase, apiKey, model string) *Client {
+func NewClient(apiBase, apiKey, model, proxy string) *Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if proxy != "" {
+		if proxyURL, err := url.Parse(proxy); err == nil {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
 	return &Client{
 		apiBase:    strings.TrimRight(apiBase, "/"),
 		apiKey:     apiKey,
 		model:      model,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Transport: transport},
 	}
 }
 

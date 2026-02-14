@@ -2,11 +2,30 @@ package gateway
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/ZacharyZcR/Kelper/core/llm"
 	"github.com/getkin/kin-openapi/openapi3"
 )
+
+var reInvalidChar = regexp.MustCompile(`[^a-zA-Z0-9_.\-:]`)
+
+// sanitizeToolName ensures the name is valid for all LLM providers (Gemini is the strictest):
+// [a-zA-Z0-9_.\-:], starts with letter or underscore, max 64 chars.
+func sanitizeToolName(name string) string {
+	name = reInvalidChar.ReplaceAllString(name, "_")
+	if len(name) == 0 {
+		return "_"
+	}
+	if c := name[0]; !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+		name = "_" + name
+	}
+	if len(name) > 64 {
+		name = name[:64]
+	}
+	return name
+}
 
 type AuthConfig struct {
 	Type       string
@@ -48,7 +67,7 @@ func BuildTools(doc *openapi3.T, targetName, baseURL string, auth AuthConfig) ([
 			if opID == "" {
 				opID = generateOpID(method, path)
 			}
-			toolName := targetName + "__" + opID
+			toolName := sanitizeToolName(targetName + "__" + opID)
 
 			description := op.Summary
 			if description == "" {

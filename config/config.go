@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Language string       `yaml:"language"`
+	Proxy    string       `yaml:"proxy"`
 	LLM     LLMConfig    `yaml:"llm"`
 	Targets []Target     `yaml:"targets"`
 	Server  ServerConfig `yaml:"server"`

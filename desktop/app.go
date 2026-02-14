@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,7 +63,8 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
-	a.initialize()
+	// Async: don't block Wails UI thread — frontend checks ready state
+	go a.initialize()
 }
 
 func (a *App) initialize() {
@@ -100,7 +102,7 @@ func (a *App) initialize() {
 		McpClients: mcpClients,
 	}
 
-	llmClient := llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model)
+	llmClient := llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model, cfg.Proxy)
 	a.language = cfg.Language
 
 	convDir := ""
@@ -134,28 +136,36 @@ func (a *App) initialize() {
 	fmt.Fprintf(os.Stderr, "Kelper ready: %d tools\n", len(allTools))
 }
 
-// ProbeProviders auto-detects local LLM services.
+// ProbeProviders auto-detects local LLM services and lists cloud presets.
 func (a *App) ProbeProviders() []ProviderInfo {
+	// Cloud presets — models fetched via FetchModels after user provides API key
+	result := []ProviderInfo{
+		{Name: "OpenAI", APIBase: "https://api.openai.com/v1", Models: []string{}},
+		{Name: "Gemini", APIBase: "https://generativelanguage.googleapis.com/v1beta/openai", Models: []string{}},
+		{Name: "DeepSeek", APIBase: "https://api.deepseek.com/v1", Models: []string{}},
+		{Name: "Claude", APIBase: "https://api.anthropic.com/v1", Models: []string{}},
+	}
+
+	// Auto-detect local services
 	type probe struct {
 		name    string
 		apiBase string
 	}
-	targets := []probe{
+	locals := []probe{
 		{"Ollama", "http://localhost:11434/v1"},
 		{"LM Studio", "http://localhost:1234/v1"},
 	}
 
-	var result []ProviderInfo
 	client := &http.Client{Timeout: 2 * time.Second}
-
-	for _, t := range targets {
+	for _, t := range locals {
 		models := fetchModels(client, t.apiBase+"/models")
 		if len(models) > 0 {
-			result = append(result, ProviderInfo{
+			// Local services go first
+			result = append([]ProviderInfo{{
 				Name:    t.name,
 				APIBase: t.apiBase,
 				Models:  models,
-			})
+			}}, result...)
 		}
 	}
 	return result
@@ -163,10 +173,10 @@ func (a *App) ProbeProviders() []ProviderInfo {
 
 // FetchModels queries /v1/models for any OpenAI-compatible endpoint.
 func (a *App) FetchModels(apiBase, apiKey string) []string {
-	client := &http.Client{Timeout: 5 * time.Second}
-	url := strings.TrimRight(apiBase, "/") + "/models"
+	client := a.proxyHTTPClient(5 * time.Second)
+	u := strings.TrimRight(apiBase, "/") + "/models"
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil
 	}
@@ -181,6 +191,17 @@ func (a *App) FetchModels(apiBase, apiKey string) []string {
 	defer resp.Body.Close()
 
 	return parseModelsResponse(resp)
+}
+
+// proxyHTTPClient returns an http.Client that uses the configured proxy (if any).
+func (a *App) proxyHTTPClient(timeout time.Duration) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if cfg, err := config.Load(a.configPath()); err == nil && cfg.Proxy != "" {
+		if proxyURL, err := url.Parse(cfg.Proxy); err == nil {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
+	return &http.Client{Timeout: timeout, Transport: transport}
 }
 
 func fetchModels(client *http.Client, url string) []string {
@@ -257,9 +278,48 @@ func (a *App) GetCurrentConfig() map[string]interface{} {
 		"api_key":  maskKey(cfg.LLM.APIKey),
 		"model":    cfg.LLM.Model,
 		"language": cfg.Language,
+		"proxy":    cfg.Proxy,
 		"ready":    a.ready,
 		"tools":    toolCount,
 	}
+}
+
+// TestProxy tests connectivity through the given proxy by hitting https://www.google.com.
+func (a *App) TestProxy(proxy string) string {
+	if proxy == "" {
+		return "no proxy configured"
+	}
+	proxyURL, err := url.Parse(proxy)
+	if err != nil {
+		return "invalid proxy URL: " + err.Error()
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = http.ProxyURL(proxyURL)
+	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
+
+	resp, err := client.Get("https://www.google.com")
+	if err != nil {
+		return err.Error()
+	}
+	resp.Body.Close()
+	return ""
+}
+
+// SaveProxy writes the proxy setting to kelper.yaml (no reinit needed).
+func (a *App) SaveProxy(proxy string) string {
+	cfg := &config.Config{}
+	if existing, err := config.Load(a.configPath()); err == nil {
+		cfg = existing
+	}
+	cfg.Proxy = proxy
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err.Error()
+	}
+	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
+		return err.Error()
+	}
+	return ""
 }
 
 // UploadSpec opens a file dialog for the user to pick a .json/.yaml OpenAPI spec.

@@ -69,7 +69,7 @@ func main() {
 
 	// Default: HTTP chat server
 	eng := engine.New(engine.Config{
-		LLM:          llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model),
+		LLM:          llm.NewClient(cfg.LLM.APIBase, cfg.LLM.APIKey, cfg.LLM.Model, cfg.Proxy),
 		Executor:     res.Router,
 		Tools:        res.Tools,
 		SystemPrompt: res.SystemPrompt,

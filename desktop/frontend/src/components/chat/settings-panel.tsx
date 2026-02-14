@@ -9,6 +9,8 @@ import {
   ProbeProviders,
   FetchModels,
   SaveLLMConfig,
+  SaveProxy,
+  TestProxy,
   GetCurrentConfig,
 } from "../../../wailsjs/go/main/App";
 
@@ -32,9 +34,15 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
   const [models, setModels] = useState<string[]>([]);
+  const [proxy, setProxy] = useState("");
+  const [proxySaved, setProxySaved] = useState("");
+  const [savingProxy, setSavingProxy] = useState(false);
+  const [testingProxy, setTestingProxy] = useState(false);
+  const [proxyTestResult, setProxyTestResult] = useState<"ok" | "fail" | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loadingModels, setLoadingModels] = useState(false);
+  const [fetchStatus, setFetchStatus] = useState("");
 
   const scan = useCallback(async () => {
     setScanning(true);
@@ -53,27 +61,70 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
       if (cfg.exists) {
         setApiBase((cfg.api_base as string) || "");
         setModel((cfg.model as string) || "");
+        const p = (cfg.proxy as string) || "";
+        setProxy(p);
+        setProxySaved(p);
       }
     });
   }, [scan]);
 
+  const handleSaveProxy = async () => {
+    setSavingProxy(true);
+    setError("");
+    try {
+      const result = await SaveProxy(proxy);
+      if (result) {
+        setError(result);
+      } else {
+        setProxySaved(proxy);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "unknown error");
+    }
+    setSavingProxy(false);
+  };
+
+  const handleTestProxy = async () => {
+    setTestingProxy(true);
+    setProxyTestResult("");
+    try {
+      const result = await TestProxy(proxy);
+      setProxyTestResult(result ? "fail" : "ok");
+    } catch {
+      setProxyTestResult("fail");
+    }
+    setTestingProxy(false);
+  };
+
   const handleUseProvider = (p: ProviderInfo) => {
     setApiBase(p.api_base);
     setApiKey("");
-    setModels(p.models);
-    if (p.models.length > 0) setModel(p.models[0]);
+    setModel("");
+    setFetchStatus("");
+    const m = p.models || [];
+    setModels(m);
+    if (m.length > 0) setModel(m[0]);
     setError("");
   };
 
   const handleFetchModels = async () => {
     if (!apiBase) return;
     setLoadingModels(true);
+    setFetchStatus("");
+    setError("");
     try {
       const result = await FetchModels(apiBase, apiKey);
-      setModels(result || []);
-      if (result && result.length > 0 && !model) setModel(result[0]);
+      const list = result || [];
+      setModels(list);
+      if (list.length > 0) {
+        setModel(list[0]);
+        setFetchStatus(t("settings.fetchSuccess").replace("{n}", String(list.length)));
+      } else {
+        setFetchStatus(t("settings.fetchEmpty"));
+      }
     } catch {
       setModels([]);
+      setFetchStatus(t("settings.fetchFailed"));
     }
     setLoadingModels(false);
   };
@@ -98,12 +149,50 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
     setSaving(false);
   };
 
+  const proxyDirty = proxy !== proxySaved;
+
   return (
     <div className="flex flex-col flex-1 h-full">
       <ScrollArea className="flex-1 px-6 py-5">
         <div className="max-w-lg mx-auto space-y-5">
 
-          {/* Auto-detected providers */}
+          {/* Proxy */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t("settings.proxy")}
+            </h3>
+            <div className="flex gap-2">
+              <Input
+                value={proxy}
+                onChange={(e) => setProxy(e.target.value)}
+                placeholder={t("settings.proxyPlaceholder")}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveProxy}
+                disabled={savingProxy || !proxyDirty}
+              >
+                {savingProxy ? "..." : t("settings.proxySave")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestProxy}
+                disabled={testingProxy || !proxySaved}
+              >
+                {testingProxy ? "..." : t("settings.proxyTest")}
+              </Button>
+            </div>
+            {proxyTestResult && (
+              <p className={`text-[11px] ${proxyTestResult === "ok" ? "text-emerald-500" : "text-destructive"}`}>
+                {proxyTestResult === "ok" ? t("settings.proxyOk") : t("settings.proxyFail")}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground/60">{t("settings.proxyHint")}</p>
+          </section>
+
+          {/* Preset / auto-detected providers */}
           <section>
             <div className="flex items-center justify-between mb-2.5">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -118,25 +207,35 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
             )}
             <div className="space-y-2">
               {providers.map((p) => (
-                <Card key={p.name} className="px-4 py-3 gap-2">
+                <Card
+                  key={p.name}
+                  className={`px-4 py-3 gap-2 cursor-pointer transition-colors ${
+                    apiBase === p.api_base ? "ring-1 ring-primary/40" : ""
+                  }`}
+                  onClick={() => handleUseProvider(p)}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        (p.models || []).length > 0 ? "bg-emerald-500" : "bg-muted-foreground/30"
+                      }`} />
                       <span className="text-sm font-medium">{p.name}</span>
                       <span className="text-xs text-muted-foreground font-mono">{p.api_base}</span>
                     </div>
-                    <Button size="xs" variant="outline" onClick={() => handleUseProvider(p)}>
+                    <Button size="xs" variant={apiBase === p.api_base ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); handleUseProvider(p); }}>
                       {t("settings.use")}
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {p.models.slice(0, 6).map((m) => (
-                      <Badge key={m} variant="secondary" className="text-[11px] font-mono">{m}</Badge>
-                    ))}
-                    {p.models.length > 6 && (
-                      <Badge variant="secondary" className="text-[11px]">+{p.models.length - 6}</Badge>
-                    )}
-                  </div>
+                  {(p.models || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {p.models.slice(0, 6).map((m) => (
+                        <Badge key={m} variant="secondary" className="text-[11px] font-mono">{m}</Badge>
+                      ))}
+                      {p.models.length > 6 && (
+                        <Badge variant="secondary" className="text-[11px]">+{p.models.length - 6}</Badge>
+                      )}
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
@@ -149,38 +248,39 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
             </h3>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">API Base</label>
-              <div className="flex gap-2">
-                <Input value={apiBase} onChange={(e) => setApiBase(e.target.value)} placeholder="http://localhost:11434/v1" />
-                <Button variant="outline" size="sm" onClick={handleFetchModels} disabled={!apiBase || loadingModels}>
-                  {loadingModels ? "..." : t("settings.fetchModels")}
-                </Button>
-              </div>
+              <Input value={apiBase} onChange={(e) => setApiBase(e.target.value)} placeholder="http://localhost:11434/v1" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">API Key</label>
               <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("settings.keyPlaceholder")} />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Model</label>
-              {models.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {models.map((m) => (
-                      <Badge
-                        key={m}
-                        variant={m === model ? "default" : "outline"}
-                        className="text-[11px] font-mono cursor-pointer"
-                        onClick={() => setModel(m)}
-                      >
-                        {m}
-                      </Badge>
-                    ))}
-                  </div>
-                  <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="model name" />
-                </div>
-              ) : (
-                <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="qwen2.5:7b / gpt-4o / ..." />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-muted-foreground">Model</label>
+                <Button variant="outline" size="xs" onClick={handleFetchModels} disabled={!apiBase || loadingModels}>
+                  {loadingModels ? "..." : t("settings.fetchModels")}
+                </Button>
+              </div>
+              {fetchStatus && (
+                <p className={`text-[11px] mb-1.5 ${models.length > 0 ? "text-emerald-500" : "text-muted-foreground"}`}>
+                  {fetchStatus}
+                </p>
               )}
+              {models.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {models.map((m) => (
+                    <Badge
+                      key={m}
+                      variant={m === model ? "default" : "outline"}
+                      className="text-[11px] font-mono cursor-pointer"
+                      onClick={() => setModel(m)}
+                    >
+                      {m}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="qwen2.5:7b / gpt-4o / ..." />
             </div>
           </section>
 

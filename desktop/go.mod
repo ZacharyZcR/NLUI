@@ -4,7 +4,6 @@ go 1.25.7
 
 require (
 	github.com/ZacharyZcR/Kelper v0.0.0-00010101000000-000000000000
-	github.com/getkin/kin-openapi v0.133.0
 	github.com/wailsapp/wails/v2 v2.11.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -17,6 +16,7 @@ require (
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
+	github.com/getkin/kin-openapi v0.133.0 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/gin-gonic/gin v1.11.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
