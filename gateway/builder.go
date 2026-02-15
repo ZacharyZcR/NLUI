@@ -34,13 +34,14 @@ type AuthConfig struct {
 }
 
 type Endpoint struct {
-	TargetName string
-	BaseURL    string
-	Method     string
-	Path       string
-	Auth       AuthConfig
-	Params     []ParamInfo
-	HasBody    bool
+	TargetName        string // Sanitized name for tool execution
+	TargetDisplayName string // Original name for display
+	BaseURL           string
+	Method            string
+	Path              string
+	Auth              AuthConfig
+	Params            []ParamInfo
+	HasBody           bool
 }
 
 type ParamInfo struct {
@@ -97,13 +98,14 @@ func BuildTools(doc *openapi3.T, targetName, baseURL string, auth AuthConfig) ([
 			}
 
 			endpoint := &Endpoint{
-				TargetName: targetName,
-				BaseURL:    baseURL,
-				Method:     strings.ToUpper(method),
-				Path:       path,
-				Auth:       auth,
-				Params:     paramInfos,
-				HasBody:    op.RequestBody != nil,
+				TargetName:        sanitizedTarget, // Sanitized for tool execution
+				TargetDisplayName: targetName,      // Original name for display
+				BaseURL:           baseURL,
+				Method:            strings.ToUpper(method),
+				Path:              path,
+				Auth:              auth,
+				Params:            paramInfos,
+				HasBody:           op.RequestBody != nil,
 			}
 
 			tools = append(tools, tool)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
@@ -22,12 +22,16 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
   const { t } = useI18n();
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [configDir, setConfigDir] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedTargets, setExpandedTargets] = useState<Set<string>>(new Set());
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     try {
       const result = await ListTools();
       setTools(result || []);
+      // Auto-expand all targets when loaded
+      const targets = new Set(result.map((t) => t.target_name || "unknown"));
+      setExpandedTargets(targets);
     } catch {
       setTools([]);
     }
@@ -47,8 +51,17 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
     };
   }, [refresh]);
 
-  const toggleExpand = (key: string) => {
-    setExpanded((prev) => {
+  const toggleTarget = (target: string) => {
+    setExpandedTargets((prev) => {
+      const next = new Set(prev);
+      if (next.has(target)) next.delete(target);
+      else next.add(target);
+      return next;
+    });
+  };
+
+  const toggleTool = (key: string) => {
+    setExpandedTools((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -79,49 +92,63 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
             </p>
           )}
 
-          {Object.entries(grouped).map(([target, items]) => (
-            <section key={target} className="space-y-1.5">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {target}
-                </h3>
-                <Badge variant="secondary" className="text-[11px]">
-                  {items.length}
-                </Badge>
-              </div>
+          {Object.entries(grouped).map(([target, items]) => {
+            const isTargetExpanded = expandedTargets.has(target);
+            return (
+              <section key={target} className="space-y-1.5">
+                <div
+                  className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-muted/30 rounded px-2 py-1 -mx-2"
+                  onClick={() => toggleTarget(target)}
+                >
+                  {isTargetExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex-1">
+                    {target}
+                  </h3>
+                  <Badge variant="secondary" className="text-[11px]">
+                    {items.length}
+                  </Badge>
+                </div>
 
-              {items.map((tool) => {
-                const key = `${target}__${tool.name}`;
-                const isExpanded = expanded.has(key);
-                return (
-                  <Card
-                    key={key}
-                    className="px-3.5 py-2.5 gap-0.5 cursor-pointer hover:bg-muted/40 transition-colors"
-                    onClick={() => toggleExpand(key)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-mono font-medium truncate">
-                        {tool.name}
-                      </span>
-                      <span className="text-muted-foreground/40 ml-2 shrink-0">
-                        {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                      </span>
-                    </div>
-                    {tool.description && (
-                      <div className="text-xs text-muted-foreground/70 line-clamp-1">
-                        {tool.description}
+                {isTargetExpanded && items.map((tool) => {
+                  const key = `${target}__${tool.name}`;
+                  const isToolExpanded = expandedTools.has(key);
+                  return (
+                    <Card
+                      key={key}
+                      className="px-3.5 py-2.5 gap-0.5 cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTool(key);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[13px] font-mono font-medium truncate">
+                          {tool.name}
+                        </span>
+                        <span className="text-muted-foreground/40 ml-2 shrink-0">
+                          {isToolExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        </span>
                       </div>
-                    )}
-                    {isExpanded && tool.parameters && (
-                      <pre className="mt-2 text-[11px] bg-muted/40 rounded-lg p-3 overflow-x-auto max-h-56 whitespace-pre-wrap leading-relaxed">
-                        {JSON.stringify(tool.parameters, null, 2)}
-                      </pre>
-                    )}
-                  </Card>
-                );
-              })}
-            </section>
-          ))}
+                      {tool.description && (
+                        <div className="text-xs text-muted-foreground/70 line-clamp-1">
+                          {tool.description}
+                        </div>
+                      )}
+                      {isToolExpanded && tool.parameters && (
+                        <pre className="mt-2 text-[11px] bg-muted/40 rounded-lg p-3 overflow-x-auto max-h-56 whitespace-pre-wrap leading-relaxed">
+                          {JSON.stringify(tool.parameters, null, 2)}
+                        </pre>
+                      )}
+                    </Card>
+                  );
+                })}
+              </section>
+            );
+          })}
         </div>
       </div>
     </div>

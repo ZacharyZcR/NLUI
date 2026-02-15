@@ -24,15 +24,16 @@ import (
 )
 
 type App struct {
-	ctx          context.Context
-	engine       *engine.Engine
-	convMgr      *conversation.Manager // survives reinit
-	language     string
-	ready        bool
-	confirmCh    chan bool
-	mcpClients   map[string]*mcp.Client
-	chatCancel   context.CancelFunc // for stopping active chat
-	chatCancelMu sync.Mutex
+	ctx              context.Context
+	engine           *engine.Engine
+	convMgr          *conversation.Manager // survives reinit
+	language         string
+	ready            bool
+	confirmCh        chan bool
+	mcpClients       map[string]*mcp.Client
+	chatCancel       context.CancelFunc // for stopping active chat
+	chatCancelMu     sync.Mutex
+	targetDisplayMap map[string]string // sanitized name -> display name
 }
 
 type ConversationInfo struct {
@@ -98,6 +99,14 @@ func (a *App) initialize() {
 		}
 	})
 	fmt.Fprintf(os.Stderr, "Discovered %d tools from targets\n", len(allTools))
+
+	// Build target display name mapping from endpoints
+	a.targetDisplayMap = make(map[string]string)
+	for _, ep := range allEndpoints {
+		if ep.TargetDisplayName != "" && ep.TargetName != "" {
+			a.targetDisplayMap[ep.TargetName] = ep.TargetDisplayName
+		}
+	}
 
 	mcpClients, mcpTools := bootstrap.InitMCPClients(cfg.MCP.Clients)
 	allTools = append(allTools, mcpTools...)
@@ -679,8 +688,17 @@ func (a *App) ListTools() []ToolInfo {
 			targetName = parts[0]
 			funcName = parts[1]
 		}
+
+		// Use display name if available
+		displayName := targetName
+		if a.targetDisplayMap != nil {
+			if dn, ok := a.targetDisplayMap[targetName]; ok {
+				displayName = dn
+			}
+		}
+
 		result = append(result, ToolInfo{
-			TargetName:  targetName,
+			TargetName:  displayName, // Use display name instead of sanitized name
 			Name:        funcName,
 			Description: t.Function.Description,
 			Parameters:  t.Function.Parameters,
