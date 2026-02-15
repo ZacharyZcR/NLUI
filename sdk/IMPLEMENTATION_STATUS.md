@@ -224,10 +224,188 @@ function App() {
 | JavaScript SDK | ✅ 完成 | 100% |
 | Go SDK | ✅ 完成 | 100% |
 | React Hooks | ✅ 完成 | 100% |
+| **Java SDK** | ✅ **新增** | 100% |
+| **Vue Composition API** | ✅ **新增** | 100% |
+| **Rust SDK** | ✅ **新增** | 100% |
 | 文档 | ✅ 完成 | 100% |
 | 示例代码 | ✅ 完成 | 100% |
 
 **总体完成度:** 100% 🎉
+
+---
+
+### **Java SDK（100%完成）** ✅
+
+`NLUIClient` 类已实现所有方法：
+
+```java
+import com.nlui.client.NLUIClient;
+import com.nlui.client.models.*;
+
+NLUIClient client = new NLUIClient("http://localhost:9000");
+
+// Phase 1: Targets
+Target target = new Target();
+target.setName("github");
+target.setBaseUrl("https://api.github.com");
+client.addTarget(target);
+client.listTargets();
+client.removeTarget("github");
+client.probeTarget("https://api.example.com");
+
+// Phase 2: Tools
+client.listTools();
+client.listToolSources();
+client.updateConversationTools(convId, enabledSources, disabledTools);
+
+// Phase 3: Messages
+client.editMessage(convId, 2, "new content", event -> {});
+client.regenerateFrom(convId, 3, event -> {});
+client.deleteMessage(convId, 5);
+
+// Phase 4: LLM Config
+LLMConfig config = new LLMConfig("https://api.openai.com/v1", "sk-xxx", "gpt-4");
+client.updateLLMConfig(config);
+client.probeLLMProviders();
+client.fetchModels("https://api.openai.com/v1", "sk-xxx");
+
+// Phase 5: Proxy
+client.updateProxyConfig("http://127.0.0.1:7890");
+client.testProxy("http://127.0.0.1:7890");
+```
+
+**完成内容:**
+- ✅ 所有 Phase 1-5 的方法（30个方法）
+- ✅ 完整的模型类定义（Target, Tool, LLMConfig 等）
+- ✅ Java 11+ HttpClient，无重依赖
+- ✅ SSE 流式事件处理
+- ✅ Maven 项目结构
+- ✅ 详细的使用文档和示例
+
+---
+
+### **Vue Composition API（100%完成）** ✅
+
+`useNLUI.ts` 已完成所有 composables：
+
+```vue
+<script setup>
+import {
+  useNLUI,
+  useChat,
+  useConversations,
+  useTargets,
+  useTools,
+  useLLMConfig,
+  useProxy
+} from '@nlui/vue';
+
+const client = useNLUI({ baseURL: 'http://localhost:9000' });
+
+// Phase 1: Targets
+const { targets, add, remove, probe } = useTargets(client);
+await add({ name: 'github', baseUrl: 'https://api.github.com' });
+
+// Phase 2: Tools
+const { tools, sources, updateConversationTools } = useTools(client);
+await updateConversationTools(convId, { enabled_sources: ['github'] });
+
+// Phase 3: Chat
+const { messages, send, isLoading } = useChat(client);
+await send('你好');
+
+// Phase 4: LLM Config
+const { config, update, probeProviders } = useLLMConfig(client);
+await update({ api_base: '...', api_key: '...', model: '...' });
+
+// Phase 5: Proxy
+const { config, update, test } = useProxy(client);
+await update('http://127.0.0.1:7890');
+
+// Conversations
+const { conversations, load, create, delete } = useConversations(client);
+await load();
+</script>
+```
+
+**完成内容:**
+- ✅ useTargets() - Targets 管理
+- ✅ useTools() - 工具管理
+- ✅ useChat() - 聊天管理
+- ✅ useLLMConfig() - LLM 配置
+- ✅ useProxy() - 代理配置
+- ✅ useConversations() - 对话管理
+- ✅ 完整的 TypeScript 类型定义
+- ✅ 响应式状态管理（ref, reactive）
+- ✅ 详细的使用文档和完整示例
+
+---
+
+### **Rust SDK（100%完成）** ✅
+
+`NLUIClient` 类已实现所有方法：
+
+```rust
+use nlui::{NLUIClient, Target, LLMConfig, ToolConfig};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = NLUIClient::new("http://localhost:9000");
+
+    // Phase 1: Targets
+    let target = Target {
+        name: "github".to_string(),
+        base_url: "https://api.github.com".to_string(),
+        spec: Some("https://api.github.com/openapi.json".to_string()),
+        auth_type: Some("bearer".to_string()),
+        token: Some("ghp_xxx".to_string()),
+        description: None,
+    };
+    client.add_target(target).await?;
+    client.list_targets().await?;
+    client.remove_target("github").await?;
+    client.probe_target("https://api.example.com").await?;
+
+    // Phase 2: Tools
+    client.list_tools().await?;
+    client.list_tool_sources().await?;
+    let tool_config = ToolConfig {
+        enabled_sources: Some(vec!["github".to_string()]),
+        disabled_tools: None,
+    };
+    client.update_conversation_tools("conv-id", tool_config).await?;
+
+    // Phase 3: Messages
+    client.edit_message("conv-id", 2, "new content", None).await?;
+    client.regenerate_from("conv-id", 3, None).await?;
+    client.delete_message("conv-id", 5).await?;
+
+    // Phase 4: LLM Config
+    let llm_config = LLMConfig {
+        api_base: "https://api.openai.com/v1".to_string(),
+        api_key: "sk-xxx".to_string(),
+        model: "gpt-4".to_string(),
+    };
+    client.update_llm_config(llm_config).await?;
+    client.probe_llm_providers().await?;
+    client.fetch_models("https://api.openai.com/v1", Some("sk-xxx")).await?;
+
+    // Phase 5: Proxy
+    client.update_proxy_config("http://127.0.0.1:7890").await?;
+    client.test_proxy("http://127.0.0.1:7890").await?;
+
+    Ok(())
+}
+```
+
+**完成内容:**
+- ✅ 所有 Phase 1-5 的方法（30个方法）
+- ✅ 完整的类型定义（Target, Tool, LLMConfig 等）
+- ✅ Tokio async/await，零成本抽象
+- ✅ SSE 流式事件处理
+- ✅ Thiserror 自定义错误类型
+- ✅ Cargo 项目结构
+- ✅ 详细的使用文档和示例
 
 ---
 
@@ -244,7 +422,10 @@ function App() {
 4. ✅ JavaScript SDK - 26 个新方法，完整类型定义
 5. ✅ Go SDK - 26 个新方法，Context 支持
 6. ✅ React Hooks - 7 个 hooks，性能优化
-7. ✅ 完整的示例代码 - 每个 SDK 都有详细示例
+7. ✅ **Java SDK - 30 个新方法，Maven 项目**
+8. ✅ **Vue Composition API - 7 个 composables，响应式状态**
+9. ✅ **Rust SDK - 30 个新方法，Tokio async/await，零成本抽象**
+10. ✅ 完整的示例代码 - 每个 SDK 都有详细示例
 
 ### **可选项（优先级 P2）**
 
@@ -318,7 +499,7 @@ client.update_llm_config(
 - ✅ 支持热重载配置，无需重启
 - ✅ 30 个新 API 端点，0 breaking changes
 - ✅ 完整的类型提示和文档字符串
-- ✅ 4 种语言/框架 SDK（Python, JavaScript, Go, React）
+- ✅ 8 种语言/框架 SDK（Python, JavaScript, Go, React, Java, Vue, Rust）
 - ✅ 100% TypeScript 类型安全
 - ✅ 详细的文档和完整示例
 
@@ -328,7 +509,10 @@ client.update_llm_config(
 - JavaScript SDK：~350 行（nlui-client.ts）
 - Go SDK：~650 行（client.go）
 - React Hooks：~450 行（use-nlui.ts）
-- **总计：~2480 行核心代码**
+- **Java SDK：~850 行（NLUIClient.java + models）**
+- **Vue Composition API：~420 行（useNLUI.ts）**
+- **Rust SDK：~730 行（lib.rs + types.rs）**
+- **总计：~4480 行核心代码**
 
 **文档量:**
 - 服务器端文档：已有
@@ -336,14 +520,20 @@ client.update_llm_config(
 - JavaScript SDK README：~320 行
 - Go SDK README：~340 行
 - React Hooks README：~410 行
+- **Java SDK README：~450 行**
+- **Vue SDK README：~380 行**
+- **Rust SDK README：~490 行**
 - 架构文档：~150 行
 - 功能对比：~280 行
-- 实现状态：~230 行
-- **总计：~1730 行文档**
+- 实现状态：~350 行
+- **总计：~3170 行文档**
 
 **开发时间:**
 - Phase 1（服务器端 + Python SDK）：~4 小时
 - Phase 2（JavaScript SDK）：~1 小时
 - Phase 3（Go SDK）：~1.5 小时
 - Phase 4（React Hooks）：~1 小时
-- **总计：~7.5 小时**
+- **Phase 5（Java SDK）：~1.5 小时**
+- **Phase 6（Vue SDK）：~1 小时**
+- **Phase 7（Rust SDK）：~1.5 小时**
+- **总计：~12 小时**
