@@ -7,7 +7,7 @@ import { SettingsPanel } from "./settings-panel";
 import { TargetsPanel } from "./targets-panel";
 import { ToolsPanel } from "./tools-panel";
 import { useI18n } from "@/lib/i18n";
-import { ListConversations, DeleteConversation, GetInfo } from "../../../wailsjs/go/main/App";
+import { ListConversations, DeleteConversation, GetInfo, SetWindowTitle } from "../../../wailsjs/go/main/App";
 
 type View = "chat" | "settings" | "targets" | "tools";
 
@@ -19,12 +19,17 @@ interface ConversationInfo {
 }
 
 export function ChatLayout() {
-  const { t, theme, toggleLang, toggleTheme } = useI18n();
+  const { t, theme, toggleLang, toggleTheme, locale } = useI18n();
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<View>("chat");
   const [ready, setReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Update window title when locale changes
+  useEffect(() => {
+    SetWindowTitle(t("window.title"));
+  }, [locale, t]);
 
   const checkReady = useCallback(async () => {
     try {
@@ -105,22 +110,22 @@ export function ChatLayout() {
         </>
       )}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* Title bar — draggable for Wails window */}
-        <header className="wails-drag flex items-center justify-between px-5 h-12 border-b bg-card/60 backdrop-blur-sm shrink-0">
-          <div className="flex items-center gap-2">
+        {/* Title bar — optimized for better visual hierarchy */}
+        <header className="wails-drag flex items-center justify-between px-4 h-14 border-b bg-gradient-to-b from-background to-background/95 backdrop-blur-sm shrink-0 shadow-sm">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
-              className="wails-nodrag md:hidden w-7 h-7 p-0"
+              className="wails-nodrag md:hidden w-8 h-8 p-0 hover:bg-accent"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-4.5 h-4.5" />
             </Button>
-            <h1 className="text-sm font-semibold tracking-wide select-none">
+            <h1 className="text-base font-bold tracking-tight select-none bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
               {t("app.title")}
             </h1>
           </div>
-          <nav className="wails-nodrag flex items-center gap-0.5">
+          <nav className="wails-nodrag flex items-center gap-1">
             {(["targets", "tools", "settings"] as const).map((key) => {
               const Icon = key === "targets" ? Target : key === "tools" ? Wrench : Settings;
               return (
@@ -128,29 +133,30 @@ export function ChatLayout() {
                   key={key}
                   variant={view === key ? "secondary" : "ghost"}
                   size="sm"
-                  className="text-xs h-7 px-2.5"
+                  className="text-xs h-8 px-3 font-medium transition-all"
                   onClick={() => toggleView(key)}
                 >
-                  <Icon className="w-3.5 h-3.5 mr-1" />
+                  <Icon className="w-3.5 h-3.5 mr-1.5" />
                   {t(`${key}.btn` as "targets.btn" | "tools.btn" | "settings.btn")}
                 </Button>
               );
             })}
-            <div className="w-px h-4 bg-border mx-1" />
+            <div className="w-px h-5 bg-border/60 mx-1.5" />
             <Button
               variant="ghost"
               size="sm"
-              className="w-7 h-7 p-0"
+              className="w-8 h-8 p-0 hover:bg-accent transition-colors"
               onClick={toggleTheme}
               title={theme === "dark" ? "Light mode" : "Dark mode"}
             >
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === "dark" ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs w-7 h-7 font-medium"
+              className="text-xs w-8 h-8 font-semibold hover:bg-accent transition-colors"
               onClick={toggleLang}
+              title="Switch language"
             >
               {t("lang.switch")}
             </Button>

@@ -50,6 +50,8 @@ export function SaveLLMConfig(arg1:string,arg2:string,arg3:string):Promise<strin
 
 export function SaveProxy(arg1:string):Promise<string>;
 
+export function SetWindowTitle(arg1:string):Promise<void>;
+
 export function StopChat():Promise<void>;
 
 export function TestProxy(arg1:string):Promise<string>;

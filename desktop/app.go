@@ -1120,3 +1120,8 @@ func (a *App) RegenerateFrom(convID string, fromIndex int) string {
 	})
 	return ""
 }
+
+// SetWindowTitle dynamically sets the window title (for i18n support).
+func (a *App) SetWindowTitle(title string) {
+	wailsRuntime.WindowSetTitle(a.ctx, title)
+}

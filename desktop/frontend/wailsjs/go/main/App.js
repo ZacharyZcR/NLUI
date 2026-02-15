@@ -98,6 +98,10 @@ export function SaveProxy(arg1) {
   return window['go']['main']['App']['SaveProxy'](arg1);
 }
 
+export function SetWindowTitle(arg1) {
+  return window['go']['main']['App']['SetWindowTitle'](arg1);
+}
+
 export function StopChat() {
   return window['go']['main']['App']['StopChat']();
 }

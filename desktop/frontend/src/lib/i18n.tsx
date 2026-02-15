@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 const translations = {
   zh: {
     "app.title": "Kelper",
+    "window.title": "Kelper - AI 中间件",
     "sidebar.new": "新对话",
     "sidebar.empty": "暂无对话",
     "sidebar.untitled": "未命名对话",
@@ -74,6 +75,7 @@ const translations = {
   },
   en: {
     "app.title": "Kelper",
+    "window.title": "Kelper - AI Middleware",
     "sidebar.new": "New Chat",
     "sidebar.empty": "No conversations",
     "sidebar.untitled": "Untitled",
@@ -145,6 +147,7 @@ const translations = {
   },
   ja: {
     "app.title": "Kelper",
+    "window.title": "Kelper - AI ミドルウェア",
     "sidebar.new": "新規チャット",
     "sidebar.empty": "会話なし",
     "sidebar.untitled": "無題",
