@@ -9,7 +9,13 @@ import NLUIClient, {
   type NLUIConfig,
   type Conversation,
   type ChatEvent,
-  type ChatMessage
+  type ChatMessage,
+  type Target,
+  type Tool,
+  type ToolSource,
+  type LLMConfig,
+  type LLMProvider,
+  type ProxyConfig
 } from "../js/nlui-client";
 
 // ============= useNLUI =============
@@ -200,5 +206,389 @@ export function useConversations(client: NLUIClient): UseConversationsReturn {
     refresh,
     create,
     deleteConv,
+  };
+}
+
+// ============= Phase 1: useTargets =============
+
+export interface UseTargetsReturn {
+  targets: Target[];
+  isLoading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+  add: (target: Omit<Target, 'tool_count'> & { auth_token?: string }) => Promise<void>;
+  remove: (name: string) => Promise<void>;
+  probe: (baseUrl: string) => Promise<{
+    found: boolean;
+    spec_url?: string;
+    tool_count?: number;
+    message: string;
+  }>;
+}
+
+export function useTargets(client: NLUIClient): UseTargetsReturn {
+  const [targets, setTargets] = useState<Target[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await client.listTargets();
+      setTargets(data);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  const add = useCallback(
+    async (target: Omit<Target, 'tool_count'> & { auth_token?: string }) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await client.addTarget(target);
+        await refresh();
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client, refresh]
+  );
+
+  const remove = useCallback(
+    async (name: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await client.removeTarget(name);
+        setTargets((prev) => prev.filter((t) => t.name !== name));
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  const probe = useCallback(
+    async (baseUrl: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await client.probeTarget(baseUrl);
+        return result;
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  // 初始加载
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    targets,
+    isLoading,
+    error,
+    refresh,
+    add,
+    remove,
+    probe,
+  };
+}
+
+// ============= Phase 2: useTools =============
+
+export interface UseToolsReturn {
+  tools: Tool[];
+  sources: ToolSource[];
+  isLoading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+  getConversationTools: (conversationId: string) => Promise<{
+    enabled_sources: string[];
+    disabled_tools: string[];
+  }>;
+  updateConversationTools: (
+    conversationId: string,
+    config: {
+      enabled_sources?: string[];
+      disabled_tools?: string[];
+    }
+  ) => Promise<void>;
+}
+
+export function useTools(client: NLUIClient): UseToolsReturn {
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [sources, setSources] = useState<ToolSource[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [toolsData, sourcesData] = await Promise.all([
+        client.listTools(),
+        client.listToolSources(),
+      ]);
+      setTools(toolsData);
+      setSources(sourcesData);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  const getConversationTools = useCallback(
+    async (conversationId: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const config = await client.getConversationTools(conversationId);
+        return config;
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  const updateConversationTools = useCallback(
+    async (
+      conversationId: string,
+      config: {
+        enabled_sources?: string[];
+        disabled_tools?: string[];
+      }
+    ) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await client.updateConversationTools(conversationId, config);
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  // 初始加载
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    tools,
+    sources,
+    isLoading,
+    error,
+    refresh,
+    getConversationTools,
+    updateConversationTools,
+  };
+}
+
+// ============= Phase 4: useLLMConfig =============
+
+export interface UseLLMConfigReturn {
+  config: LLMConfig | null;
+  providers: LLMProvider[];
+  models: string[];
+  isLoading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+  update: (config: {
+    api_base: string;
+    api_key?: string;
+    model?: string;
+  }) => Promise<void>;
+  probeProviders: () => Promise<void>;
+  fetchModels: (apiBase: string, apiKey?: string) => Promise<void>;
+}
+
+export function useLLMConfig(client: NLUIClient): UseLLMConfigReturn {
+  const [config, setConfig] = useState<LLMConfig | null>(null);
+  const [providers, setProviders] = useState<LLMProvider[]>([]);
+  const [models, setModels] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await client.getLLMConfig();
+      setConfig(data);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  const update = useCallback(
+    async (newConfig: {
+      api_base: string;
+      api_key?: string;
+      model?: string;
+    }) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await client.updateLLMConfig(newConfig);
+        await refresh();
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client, refresh]
+  );
+
+  const probeProviders = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await client.probeLLMProviders();
+      setProviders(data);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  const fetchModels = useCallback(
+    async (apiBase: string, apiKey?: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await client.fetchModels({ api_base: apiBase, api_key: apiKey });
+        setModels(data);
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  // 初始加载
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    config,
+    providers,
+    models,
+    isLoading,
+    error,
+    refresh,
+    update,
+    probeProviders,
+    fetchModels,
+  };
+}
+
+// ============= Phase 5: useProxy =============
+
+export interface UseProxyReturn {
+  config: ProxyConfig | null;
+  isLoading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+  update: (proxy: string) => Promise<void>;
+  test: (proxy: string) => Promise<{ message: string }>;
+}
+
+export function useProxy(client: NLUIClient): UseProxyReturn {
+  const [config, setConfig] = useState<ProxyConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await client.getProxyConfig();
+      setConfig(data);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  const update = useCallback(
+    async (proxy: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await client.updateProxyConfig(proxy);
+        await refresh();
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client, refresh]
+  );
+
+  const test = useCallback(
+    async (proxy: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await client.testProxy(proxy);
+        return result;
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  // 初始加载
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    config,
+    isLoading,
+    error,
+    refresh,
+    update,
+    test,
   };
 }
