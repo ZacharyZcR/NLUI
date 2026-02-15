@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ZacharyZcR/Kelper/core/conversation"
 	"github.com/ZacharyZcR/Kelper/core/llm"
@@ -70,7 +71,10 @@ func (e *Engine) Chat(ctx context.Context, convID, message, authToken string, on
 		e.convMgr.UpdateTitle(conv.ID, title)
 	}
 
-	finalMessages, err := e.loop.Run(ctx, conv.Messages, e.tools, authToken, onEvent)
+	// Filter tools based on conversation config
+	enabledTools := e.filterTools(conv)
+
+	finalMessages, err := e.loop.Run(ctx, conv.Messages, enabledTools, authToken, onEvent)
 	if err != nil {
 		e.convMgr.UpdateMessages(conv.ID, finalMessages)
 		return conv.ID, fmt.Errorf("chat: %w", err)
@@ -121,7 +125,8 @@ func (e *Engine) EditMessageAndRegenerate(ctx context.Context, convID string, ms
 	if conv == nil {
 		return fmt.Errorf("conversation not found")
 	}
-	finalMessages, err := e.loop.Run(ctx, conv.Messages, e.tools, authToken, onEvent)
+	enabledTools := e.filterTools(conv)
+	finalMessages, err := e.loop.Run(ctx, conv.Messages, enabledTools, authToken, onEvent)
 	e.convMgr.UpdateMessages(convID, finalMessages)
 	return err
 }
@@ -136,6 +141,11 @@ func (e *Engine) DeleteMessage(convID string, msgIndex int) error {
 	return e.convMgr.DeleteMessage(convID, msgIndex)
 }
 
+// UpdateToolConfig updates the tool configuration for a conversation.
+func (e *Engine) UpdateToolConfig(convID string, enabledSources, disabledTools []string) error {
+	return e.convMgr.UpdateToolConfig(convID, enabledSources, disabledTools)
+}
+
 // RegenerateFrom regenerates the conversation from a specific message index.
 // Useful for retrying after the last assistant message.
 func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex int, authToken string, onEvent func(Event)) error {
@@ -147,7 +157,60 @@ func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex in
 		return fmt.Errorf("invalid message index")
 	}
 	truncated := conv.Messages[:fromIndex]
-	finalMessages, err := e.loop.Run(ctx, truncated, e.tools, authToken, onEvent)
+	enabledTools := e.filterTools(conv)
+	finalMessages, err := e.loop.Run(ctx, truncated, enabledTools, authToken, onEvent)
 	e.convMgr.UpdateMessages(convID, finalMessages)
 	return err
+}
+
+// filterTools returns the tools enabled for this conversation.
+// If EnabledSources is empty, all tools are enabled.
+// DisabledTools can block specific tools even within enabled sources.
+func (e *Engine) filterTools(conv *Conversation) []Tool {
+	if len(conv.EnabledSources) == 0 && len(conv.DisabledTools) == 0 {
+		return e.tools // All tools enabled
+	}
+
+	var result []Tool
+	for _, tool := range e.tools {
+		toolName := tool.Function.Name
+		source := extractSource(toolName)
+
+		// Check if source is enabled (empty list = all enabled)
+		if len(conv.EnabledSources) > 0 {
+			sourceEnabled := false
+			for _, s := range conv.EnabledSources {
+				if s == source {
+					sourceEnabled = true
+					break
+				}
+			}
+			if !sourceEnabled {
+				continue
+			}
+		}
+
+		// Check if tool is explicitly disabled
+		toolDisabled := false
+		for _, dt := range conv.DisabledTools {
+			if dt == toolName {
+				toolDisabled = true
+				break
+			}
+		}
+		if toolDisabled {
+			continue
+		}
+
+		result = append(result, tool)
+	}
+	return result
+}
+
+// extractSource returns the source name from a tool name (e.g., "mcp__tool" -> "mcp")
+func extractSource(toolName string) string {
+	if idx := strings.Index(toolName, "__"); idx > 0 {
+		return toolName[:idx]
+	}
+	return "default"
 }

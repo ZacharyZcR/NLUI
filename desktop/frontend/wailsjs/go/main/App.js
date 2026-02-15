@@ -34,6 +34,10 @@ export function FetchModels(arg1, arg2) {
   return window['go']['main']['App']['FetchModels'](arg1, arg2);
 }
 
+export function GetAvailableSources() {
+  return window['go']['main']['App']['GetAvailableSources']();
+}
+
 export function GetConfigDir() {
   return window['go']['main']['App']['GetConfigDir']();
 }
@@ -48,6 +52,10 @@ export function GetCurrentConfig() {
 
 export function GetInfo() {
   return window['go']['main']['App']['GetInfo']();
+}
+
+export function GetToolConfig(arg1) {
+  return window['go']['main']['App']['GetToolConfig'](arg1);
 }
 
 export function ListConversations() {
@@ -92,6 +100,10 @@ export function StopChat() {
 
 export function TestProxy(arg1) {
   return window['go']['main']['App']['TestProxy'](arg1);
+}
+
+export function UpdateToolConfig(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateToolConfig'](arg1, arg2, arg3);
 }
 
 export function UploadSpec() {

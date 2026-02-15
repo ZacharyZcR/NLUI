@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
+import { ToolSelector } from "./tool-selector";
 import { useI18n } from "@/lib/i18n";
 import { Chat, ConfirmTool, GetConversationMessages, StopChat, EditMessage, DeleteMessage, RegenerateFrom } from "../../../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
@@ -362,19 +363,22 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         </AlertDialogContent>
       </AlertDialog>
       <div className="relative">
-        {usage && (
-          <div className="absolute -top-6 right-2 sm:right-4 flex items-center gap-2 text-[10px] text-muted-foreground/50 font-mono select-none">
-            <span>{usage.prompt_tokens}+{usage.completion_tokens}={usage.total_tokens} tokens</span>
+        <div className="absolute -top-10 left-2 sm:left-4 right-2 sm:right-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {loading && !pendingConfirm && (
+              <Button size="xs" variant="outline" onClick={handleStopChat} className="h-7">
+                <StopCircle className="w-3 h-3 mr-1" />
+                {t("chat.stop")}
+              </Button>
+            )}
+            <ToolSelector conversationId={conversationId} />
           </div>
-        )}
-        {loading && !pendingConfirm && (
-          <div className="absolute -top-10 left-2 sm:left-4">
-            <Button size="xs" variant="outline" onClick={handleStopChat} className="h-7">
-              <StopCircle className="w-3 h-3 mr-1" />
-              {t("chat.stop")}
-            </Button>
-          </div>
-        )}
+          {usage && (
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 font-mono select-none">
+              <span>{usage.prompt_tokens}+{usage.completion_tokens}={usage.total_tokens} tokens</span>
+            </div>
+          )}
+        </div>
         <ChatInput onSend={handleSend} disabled={loading} />
       </div>
     </div>

@@ -15,11 +15,13 @@ import (
 )
 
 type Conversation struct {
-	ID        string        `json:"id"`
-	Title     string        `json:"title"`
-	Messages  []llm.Message `json:"messages"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	ID             string        `json:"id"`
+	Title          string        `json:"title"`
+	Messages       []llm.Message `json:"messages"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+	EnabledSources []string      `json:"enabled_sources,omitempty"` // 启用的 source（MCP/Target），空表示全部启用
+	DisabledTools  []string      `json:"disabled_tools,omitempty"`  // 单独禁用的工具（完整名 source__tool）
 }
 
 type Manager struct {
@@ -59,6 +61,19 @@ func (m *Manager) Create(title, systemPrompt string) *Conversation {
 			Content: systemPrompt,
 		})
 	}
+
+	// Copy tool config from most recent conversation
+	var latest *Conversation
+	for _, c := range m.convs {
+		if latest == nil || c.UpdatedAt.After(latest.UpdatedAt) {
+			latest = c
+		}
+	}
+	if latest != nil {
+		conv.EnabledSources = append([]string{}, latest.EnabledSources...)
+		conv.DisabledTools = append([]string{}, latest.DisabledTools...)
+	}
+
 	m.convs[conv.ID] = conv
 	m.saveLocked(conv)
 	return conv
@@ -156,6 +171,21 @@ func (m *Manager) DeleteMessage(id string, index int) error {
 		return fmt.Errorf("invalid message index")
 	}
 	conv.Messages = append(conv.Messages[:index], conv.Messages[index+1:]...)
+	conv.UpdatedAt = time.Now()
+	m.saveLocked(conv)
+	return nil
+}
+
+// UpdateToolConfig updates the tool configuration for a conversation.
+func (m *Manager) UpdateToolConfig(id string, enabledSources, disabledTools []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	conv, ok := m.convs[id]
+	if !ok {
+		return fmt.Errorf("conversation not found")
+	}
+	conv.EnabledSources = enabledSources
+	conv.DisabledTools = disabledTools
 	conv.UpdatedAt = time.Now()
 	m.saveLocked(conv)
 	return nil

@@ -18,6 +18,8 @@ export function EditMessage(arg1:string,arg2:number,arg3:string):Promise<string>
 
 export function FetchModels(arg1:string,arg2:string):Promise<Array<string>>;
 
+export function GetAvailableSources():Promise<Array<main.SourceInfo>>;
+
 export function GetConfigDir():Promise<string>;
 
 export function GetConversationMessages(arg1:string):Promise<Array<main.ChatMessage>>;
@@ -25,6 +27,8 @@ export function GetConversationMessages(arg1:string):Promise<Array<main.ChatMess
 export function GetCurrentConfig():Promise<Record<string, any>>;
 
 export function GetInfo():Promise<Record<string, any>>;
+
+export function GetToolConfig(arg1:string):Promise<main.ToolConfig>;
 
 export function ListConversations():Promise<Array<main.ConversationInfo>>;
 
@@ -47,5 +51,7 @@ export function SaveProxy(arg1:string):Promise<string>;
 export function StopChat():Promise<void>;
 
 export function TestProxy(arg1:string):Promise<string>;
+
+export function UpdateToolConfig(arg1:string,arg2:Array<string>,arg3:Array<string>):Promise<string>;
 
 export function UploadSpec():Promise<Record<string, any>>;

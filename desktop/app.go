@@ -888,6 +888,98 @@ func (a *App) DeleteMessage(convID string, frontendIndex int) string {
 	return ""
 }
 
+// UpdateToolConfig updates the tool configuration for a conversation.
+func (a *App) UpdateToolConfig(convID string, enabledSources, disabledTools []string) string {
+	if !a.ready {
+		return "not ready"
+	}
+	if err := a.engine.UpdateToolConfig(convID, enabledSources, disabledTools); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// GetToolConfig returns the tool configuration for a conversation.
+type ToolConfig struct {
+	EnabledSources []string `json:"enabled_sources"`
+	DisabledTools  []string `json:"disabled_tools"`
+}
+
+func (a *App) GetToolConfig(convID string) ToolConfig {
+	if !a.ready || convID == "" {
+		return ToolConfig{
+			EnabledSources: []string{},
+			DisabledTools:  []string{},
+		}
+	}
+	conv := a.engine.GetConversation(convID)
+	if conv == nil {
+		return ToolConfig{
+			EnabledSources: []string{},
+			DisabledTools:  []string{},
+		}
+	}
+	return ToolConfig{
+		EnabledSources: conv.EnabledSources,
+		DisabledTools:  conv.DisabledTools,
+	}
+}
+
+// GetAvailableSources returns all available tool sources (MCP clients + API targets).
+func (a *App) GetAvailableSources() []SourceInfo {
+	if !a.ready {
+		return []SourceInfo{}
+	}
+
+	sourcesMap := make(map[string]*SourceInfo)
+
+	for _, tool := range a.engine.Tools() {
+		toolName := tool.Function.Name
+		source := "default"
+		displayName := toolName
+
+		if idx := strings.Index(toolName, "__"); idx > 0 {
+			source = toolName[:idx]
+			displayName = toolName[idx+2:]
+		}
+
+		// Skip temporary tools (_upload, _probe)
+		if strings.HasPrefix(source, "_") {
+			continue
+		}
+
+		if _, exists := sourcesMap[source]; !exists {
+			sourcesMap[source] = &SourceInfo{
+				Name:  source,
+				Tools: []ToolSummary{},
+			}
+		}
+
+		sourcesMap[source].Tools = append(sourcesMap[source].Tools, ToolSummary{
+			Name:        toolName,
+			DisplayName: displayName,
+			Description: tool.Function.Description,
+		})
+	}
+
+	var result []SourceInfo
+	for _, src := range sourcesMap {
+		result = append(result, *src)
+	}
+	return result
+}
+
+type SourceInfo struct {
+	Name  string        `json:"name"`
+	Tools []ToolSummary `json:"tools"`
+}
+
+type ToolSummary struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
+}
+
 // RegenerateFrom regenerates from a specific message index (for retry).
 func (a *App) RegenerateFrom(convID string, fromIndex int) string {
 	if !a.ready {
