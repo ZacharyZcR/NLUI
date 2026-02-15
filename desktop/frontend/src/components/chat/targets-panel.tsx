@@ -42,8 +42,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
   const [tgtName, setTgtName] = useState("");
   const [tgtURL, setTgtURL] = useState("");
   const [tgtSpec, setTgtSpec] = useState("");
-  const [tgtAuth, setTgtAuth] = useState("");
-  const [tgtToken, setTgtToken] = useState("");
+  const [tgtApiKey, setTgtApiKey] = useState("");
   const [tgtDesc, setTgtDesc] = useState("");
   const [probing, setProbing] = useState(false);
   const [probeResult, setProbeResult] = useState<ProbeResult | null>(null);
@@ -97,15 +96,16 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
       return;
     }
     setTgtError("");
-    const result = await AddTarget(tgtName, tgtURL, tgtSpec, tgtAuth, tgtToken, tgtDesc);
+    // If API key is provided, use bearer auth; otherwise empty
+    const authType = tgtApiKey ? "bearer" : "";
+    const result = await AddTarget(tgtName, tgtURL, tgtSpec, authType, tgtApiKey, tgtDesc);
     if (result) {
       setTgtError(result);
     } else {
       setTgtName("");
       setTgtURL("");
       setTgtSpec("");
-      setTgtAuth("");
-      setTgtToken("");
+      setTgtApiKey("");
       setTgtDesc("");
       setProbeResult(null);
       refreshTargets();
@@ -227,35 +227,18 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
               </div>
             </div>
 
-            {/* Auth */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                  <Lock className="w-3 h-3" />
-                  {t("targets.authType")}
-                </label>
-                <div className="flex gap-1.5">
-                  {["", "bearer", "header"].map((at) => (
-                    <Badge
-                      key={at || "none"}
-                      variant={tgtAuth === at ? "default" : "outline"}
-                      className="text-[11px] cursor-pointer"
-                      onClick={() => setTgtAuth(at)}
-                    >
-                      {at || "none"}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              {tgtAuth && (
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                    <Key className="w-3 h-3" />
-                    Token
-                  </label>
-                  <Input type="password" value={tgtToken} onChange={(e) => setTgtToken(e.target.value)} placeholder="Bearer token" />
-                </div>
-              )}
+            {/* API Key (optional) */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Key className="w-3 h-3" />
+                API Key <span className="text-muted-foreground/50 ml-1">(optional)</span>
+              </label>
+              <Input
+                type="password"
+                value={tgtApiKey}
+                onChange={(e) => setTgtApiKey(e.target.value)}
+                placeholder="sk-..."
+              />
             </div>
 
             {tgtError && <p className="text-xs text-destructive">{tgtError}</p>}
