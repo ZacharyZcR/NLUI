@@ -14,6 +14,10 @@ export function ConfirmTool(arg1) {
   return window['go']['main']['App']['ConfirmTool'](arg1);
 }
 
+export function CreateEmptyConversation() {
+  return window['go']['main']['App']['CreateEmptyConversation']();
+}
+
 export function DeleteConversation(arg1) {
   return window['go']['main']['App']['DeleteConversation'](arg1);
 }

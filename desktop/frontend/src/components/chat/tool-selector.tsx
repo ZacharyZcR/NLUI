@@ -136,14 +136,16 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
   };
 
   const isSourceEnabled = (sourceName: string) => {
-    return config.enabled_sources.length === 0 || config.enabled_sources.includes(sourceName);
+    const enabledSources = config.enabled_sources || [];
+    return enabledSources.length === 0 || enabledSources.includes(sourceName);
   };
 
   const isToolDisabled = (toolName: string) => {
     return (config.disabled_tools || []).includes(toolName);
   };
 
-  const enabledCount = config.enabled_sources.length === 0 ? sources.length : config.enabled_sources.length;
+  const enabledSources = config.enabled_sources || [];
+  const enabledCount = enabledSources.length === 0 ? sources.length : enabledSources.length;
 
   const handleTogglePanel = useCallback(() => {
     if (!showPanel) {

@@ -405,10 +405,10 @@ func (a *App) ProbeTarget(baseURL string) map[string]interface{} {
 func (a *App) ListTargets() []map[string]interface{} {
 	cfg, err := config.Load(a.configPath())
 	if err != nil {
-		return nil
+		return []map[string]interface{}{}
 	}
 
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0)
 	for _, tgt := range cfg.Targets {
 		toolCount := 0
 		specFound := ""
@@ -578,7 +578,7 @@ func (a *App) Chat(message, conversationID string) string {
 
 func (a *App) ListConversations() []ConversationInfo {
 	if !a.ready {
-		return nil
+		return []ConversationInfo{}
 	}
 	convs := a.engine.ListConversations()
 	result := make([]ConversationInfo, 0, len(convs))
@@ -690,9 +690,9 @@ type ToolInfo struct {
 // ListTools returns all loaded tools with target grouping.
 func (a *App) ListTools() []ToolInfo {
 	if a.engine == nil {
-		return nil
+		return []ToolInfo{}
 	}
-	var result []ToolInfo
+	result := make([]ToolInfo, 0)
 	for _, t := range a.engine.Tools() {
 		targetName := ""
 		funcName := t.Function.Name
@@ -960,9 +960,18 @@ func (a *App) GetToolConfig(convID string) ToolConfig {
 			DisabledTools:  []string{},
 		}
 	}
+	// Ensure slices are never nil (JSON null) for frontend
+	enabledSources := conv.EnabledSources
+	if enabledSources == nil {
+		enabledSources = []string{}
+	}
+	disabledTools := conv.DisabledTools
+	if disabledTools == nil {
+		disabledTools = []string{}
+	}
 	return ToolConfig{
-		EnabledSources: conv.EnabledSources,
-		DisabledTools:  conv.DisabledTools,
+		EnabledSources: enabledSources,
+		DisabledTools:  disabledTools,
 	}
 }
 
@@ -1003,7 +1012,7 @@ func (a *App) GetAvailableSources() []SourceInfo {
 		})
 	}
 
-	var result []SourceInfo
+	result := make([]SourceInfo, 0, len(sourcesMap))
 	for _, src := range sourcesMap {
 		result = append(result, *src)
 	}

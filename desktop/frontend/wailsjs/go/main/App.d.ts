@@ -8,6 +8,8 @@ export function Chat(arg1:string,arg2:string):Promise<string>;
 
 export function ConfirmTool(arg1:boolean):Promise<void>;
 
+export function CreateEmptyConversation():Promise<string>;
+
 export function DeleteConversation(arg1:string):Promise<void>;
 
 export function DeleteMessage(arg1:string,arg2:number):Promise<string>;
