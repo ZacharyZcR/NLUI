@@ -84,11 +84,16 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
 
       if (!activeConvId) return;
 
+      // Only allow toggling sources when there are multiple sources
+      if (sources.length <= 1) {
+        return; // No-op for single source
+      }
+
       const currentEnabled = config.enabled_sources || [];
       let newEnabled: string[];
 
       if (currentEnabled.length === 0) {
-        // All enabled → disable others
+        // All enabled → enable only this one
         newEnabled = [sourceName];
       } else if (currentEnabled.includes(sourceName)) {
         // Remove this source
@@ -210,17 +215,19 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
                 return (
                   <div key={src.name} className="border rounded-md overflow-hidden">
                     <div className="flex items-center gap-2 p-2 hover:bg-muted/50 cursor-pointer" onClick={() => toggleExpanded(src.name)}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSource(src.name);
-                        }}
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                          enabled ? "bg-primary border-primary" : "border-muted-foreground/30"
-                        }`}
-                      >
-                        {enabled && <div className="w-2 h-2 bg-primary-foreground rounded-sm" />}
-                      </button>
+                      {sources.length > 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSource(src.name);
+                          }}
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                            enabled ? "bg-primary border-primary" : "border-muted-foreground/30"
+                          }`}
+                        >
+                          {enabled && <div className="w-2 h-2 bg-primary-foreground rounded-sm" />}
+                        </button>
+                      )}
                       {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       <span className="text-sm font-medium flex-1">{src.name}</span>
                       <span className="text-xs text-muted-foreground">{src.tools.length}</span>
