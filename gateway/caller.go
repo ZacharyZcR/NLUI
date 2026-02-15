@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"sync"
@@ -22,9 +23,14 @@ type Caller struct {
 }
 
 func NewCaller(endpoints map[string]*Endpoint) *Caller {
+	// Create cookie jar for automatic session management
+	jar, _ := cookiejar.New(nil)
 	return &Caller{
-		endpoints:      endpoints,
-		httpClient:     &http.Client{Timeout: 30 * time.Second},
+		endpoints: endpoints,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Jar:     jar, // Auto-manage cookies across requests
+		},
 		healthCache:    make(map[string]time.Time),
 		healthCacheTTL: 30 * time.Second,
 	}

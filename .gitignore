@@ -3,3 +3,6 @@ kelper.exe
 *.db
 kelper.yaml
 !kelper.example.yaml
+.claude/settings.local.json
+desktop/desktop.exe
+**/__pycache__/

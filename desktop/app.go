@@ -769,12 +769,120 @@ func (a *App) DeleteMessagesFrom(convID string, msgIndex int) string {
 	return ""
 }
 
-// DeleteMessage deletes a single message at the given index.
-func (a *App) DeleteMessage(convID string, msgIndex int) string {
+// DeleteMessage deletes a single message at the given frontend display index.
+// For assistant messages with tool calls, deletes the entire conversation turn
+// (assistant + all subsequent tool results).
+func (a *App) DeleteMessage(convID string, frontendIndex int) string {
 	if !a.ready {
 		return "not ready"
 	}
-	if err := a.engine.DeleteMessage(convID, msgIndex); err != nil {
+	conv := a.engine.GetConversation(convID)
+	if conv == nil {
+		return "conversation not found"
+	}
+
+	// Build frontend → backend index mapping
+	frontendIdx := 0
+	targetBackendIdx := -1
+	targetMsg := (*llm.Message)(nil)
+
+	for i, m := range conv.Messages {
+		if m.Role == "system" {
+			continue
+		}
+
+		msgStart := frontendIdx
+		msgCount := 0
+
+		switch m.Role {
+		case "user":
+			msgCount = 1
+		case "assistant":
+			if m.Content != "" {
+				msgCount++
+			}
+			msgCount += len(m.ToolCalls)
+		case "tool":
+			msgCount = 1
+		}
+
+		// Check if frontendIndex falls within this backend message's range
+		if frontendIndex >= msgStart && frontendIndex < msgStart+msgCount {
+			targetBackendIdx = i
+			targetMsg = &conv.Messages[i]
+			break
+		}
+
+		frontendIdx += msgCount
+	}
+
+	if targetBackendIdx == -1 {
+		return "invalid message index"
+	}
+
+	// Determine what to delete based on message type
+	deleteStart := targetBackendIdx
+	deleteEnd := targetBackendIdx
+
+	if targetMsg.Role == "assistant" && len(targetMsg.ToolCalls) > 0 {
+		// Delete assistant + all subsequent tool results
+		toolCallIDs := make(map[string]bool)
+		for _, tc := range targetMsg.ToolCalls {
+			toolCallIDs[tc.ID] = true
+		}
+
+		// Find all subsequent tool messages that match these tool call IDs
+		for i := targetBackendIdx + 1; i < len(conv.Messages); i++ {
+			if conv.Messages[i].Role == "tool" && toolCallIDs[conv.Messages[i].ToolCallID] {
+				deleteEnd = i
+				delete(toolCallIDs, conv.Messages[i].ToolCallID)
+			} else if conv.Messages[i].Role != "tool" {
+				// Stop at the next non-tool message
+				break
+			}
+		}
+	} else if targetMsg.Role == "tool" {
+		// Deleting a tool result - find and delete the assistant that triggered it
+		toolCallID := targetMsg.ToolCallID
+		for i := targetBackendIdx - 1; i >= 0; i-- {
+			if conv.Messages[i].Role == "assistant" {
+				// Check if this assistant has the matching tool call
+				for _, tc := range conv.Messages[i].ToolCalls {
+					if tc.ID == toolCallID {
+						deleteStart = i
+						// Also delete all tool results for this assistant
+						for _, otherTC := range conv.Messages[i].ToolCalls {
+							for j := i + 1; j < len(conv.Messages); j++ {
+								if conv.Messages[j].Role == "tool" && conv.Messages[j].ToolCallID == otherTC.ID {
+									if j > deleteEnd {
+										deleteEnd = j
+									}
+								}
+							}
+						}
+						break
+					}
+				}
+				break
+			}
+		}
+	}
+	// For user messages or assistant messages without tool calls, just delete that single message
+
+	// Delete the range [deleteStart, deleteEnd]
+	if deleteEnd > deleteStart {
+		// We need to delete a range, not just from a point
+		// Rebuild the message list excluding [deleteStart, deleteEnd]
+		newMessages := append([]llm.Message{}, conv.Messages[:deleteStart]...)
+		if deleteEnd+1 < len(conv.Messages) {
+			newMessages = append(newMessages, conv.Messages[deleteEnd+1:]...)
+		}
+		a.convMgr.UpdateMessages(convID, newMessages)
+		return ""
+	}
+
+	// Single message deletion
+	if err := a.engine.DeleteMessage(convID, deleteStart); err != nil {
 		return err.Error()
 	}
 	return ""

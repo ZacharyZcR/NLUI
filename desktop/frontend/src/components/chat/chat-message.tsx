@@ -157,22 +157,31 @@ function UserMessage({ content, onEdit, onDelete }: { content: string; onEdit?: 
           {onEdit && (
             <button
               onClick={() => setEditing(true)}
-              className="w-6 h-6 flex items-center justify-center rounded bg-background/20 hover:bg-background/30 backdrop-blur-sm text-[11px]"
+              className="w-7 h-7 flex items-center justify-center rounded bg-background/20 hover:bg-background/30 backdrop-blur-sm"
               title="Edit"
             >
-              <Edit2 className="w-3 h-3" />
+              <Edit2 className="w-3.5 h-3.5" />
             </button>
           )}
           {onDelete && (
             <button
               onClick={onDelete}
-              className="w-6 h-6 flex items-center justify-center rounded bg-background/20 hover:bg-destructive/80 backdrop-blur-sm text-[11px]"
+              className="w-7 h-7 flex items-center justify-center rounded bg-background/20 hover:bg-destructive/80 backdrop-blur-sm"
               title="Delete"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
-          <CopyBtn text={content} />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(content);
+            }}
+            className="w-7 h-7 flex items-center justify-center rounded bg-background/20 hover:bg-background/30 backdrop-blur-sm"
+            title="Copy"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>
@@ -201,22 +210,31 @@ function AssistantMessage({ content, isLast, onRetry, onDelete }: { content: str
             {isLast && onRetry && (
               <button
                 onClick={onRetry}
-                className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
+                className="w-7 h-7 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
                 title="Retry"
               >
-                <RotateCw className="w-3 h-3" />
+                <RotateCw className="w-3.5 h-3.5" />
               </button>
             )}
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-destructive/80 text-muted-foreground hover:text-foreground"
+                className="w-7 h-7 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-destructive/80 text-muted-foreground hover:text-foreground"
                 title="Delete"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
-            <CopyBtn text={content} />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(content);
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
+              title="Copy"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>
@@ -245,22 +263,31 @@ function AssistantMessage({ content, isLast, onRetry, onDelete }: { content: str
           {isLast && onRetry && (
             <button
               onClick={onRetry}
-              className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
+              className="w-7 h-7 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
               title="Retry"
             >
-              <RotateCw className="w-3 h-3" />
+              <RotateCw className="w-3.5 h-3.5" />
             </button>
           )}
           {onDelete && (
             <button
               onClick={onDelete}
-              className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-destructive/80 text-muted-foreground hover:text-foreground"
+              className="w-7 h-7 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-destructive/80 text-muted-foreground hover:text-foreground"
               title="Delete"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
-          <CopyBtn text={content} />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(content);
+            }}
+            className="w-7 h-7 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
+            title="Copy"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>

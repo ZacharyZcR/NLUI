@@ -131,13 +131,32 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         case "done": {
           streamIdRef.current = "";
           const d = event.data as { conversation_id?: string; usage?: UsageInfo };
+          let finalConvId = convIdRef.current;
           if (d.conversation_id && !convIdRef.current) {
+            finalConvId = d.conversation_id;
             onConversationCreated(d.conversation_id);
           }
           if (d.usage) {
             setUsage(d.usage);
           }
           setLoading(false);
+          // Reload messages from backend to ensure consistency
+          if (finalConvId) {
+            GetConversationMessages(finalConvId).then((msgs) => {
+              if (convIdRef.current === finalConvId) {
+                setMessages(
+                  (msgs || []).map((m: { id: string; role: string; content: string; tool_name?: string; tool_args?: string }) => ({
+                    id: m.id,
+                    role: m.role as Message["role"],
+                    content: m.content || "",
+                    toolName: m.tool_name,
+                    toolArgs: m.tool_args,
+                    timestamp: new Date(),
+                  }))
+                );
+              }
+            });
+          }
           scrollToBottom();
           break;
         }
