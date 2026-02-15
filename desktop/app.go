@@ -934,7 +934,29 @@ func (a *App) UpdateToolConfig(convID string, enabledSources, disabledTools []st
 	if !a.ready {
 		return "not ready"
 	}
-	if err := a.engine.UpdateToolConfig(convID, enabledSources, disabledTools); err != nil {
+
+	// Map display names back to sanitized names for internal use
+	sanitizedSources := make([]string, 0, len(enabledSources))
+	if a.targetDisplayMap != nil {
+		// Build reverse map: display name -> sanitized name
+		reverseMap := make(map[string]string)
+		for sanitized, display := range a.targetDisplayMap {
+			reverseMap[display] = sanitized
+		}
+
+		for _, displayName := range enabledSources {
+			if sanitized, ok := reverseMap[displayName]; ok {
+				sanitizedSources = append(sanitizedSources, sanitized)
+			} else {
+				// Already sanitized or unknown, keep as-is
+				sanitizedSources = append(sanitizedSources, displayName)
+			}
+		}
+	} else {
+		sanitizedSources = enabledSources
+	}
+
+	if err := a.engine.UpdateToolConfig(convID, sanitizedSources, disabledTools); err != nil {
 		return err.Error()
 	}
 	return ""
@@ -969,8 +991,24 @@ func (a *App) GetToolConfig(convID string) ToolConfig {
 	if disabledTools == nil {
 		disabledTools = []string{}
 	}
+
+	// Map sanitized source names to display names for frontend
+	displaySources := make([]string, 0, len(enabledSources))
+	if a.targetDisplayMap != nil {
+		for _, sanitized := range enabledSources {
+			if display, ok := a.targetDisplayMap[sanitized]; ok {
+				displaySources = append(displaySources, display)
+			} else {
+				// Unknown or already display name
+				displaySources = append(displaySources, sanitized)
+			}
+		}
+	} else {
+		displaySources = enabledSources
+	}
+
 	return ToolConfig{
-		EnabledSources: enabledSources,
+		EnabledSources: displaySources,
 		DisabledTools:  disabledTools,
 	}
 }
@@ -998,14 +1036,22 @@ func (a *App) GetAvailableSources() []SourceInfo {
 			continue
 		}
 
-		if _, exists := sourcesMap[source]; !exists {
-			sourcesMap[source] = &SourceInfo{
-				Name:  source,
+		// Map sanitized source name to display name
+		sourceDisplayName := source
+		if a.targetDisplayMap != nil {
+			if dn, ok := a.targetDisplayMap[source]; ok {
+				sourceDisplayName = dn
+			}
+		}
+
+		if _, exists := sourcesMap[sourceDisplayName]; !exists {
+			sourcesMap[sourceDisplayName] = &SourceInfo{
+				Name:  sourceDisplayName,
 				Tools: []ToolSummary{},
 			}
 		}
 
-		sourcesMap[source].Tools = append(sourcesMap[source].Tools, ToolSummary{
+		sourcesMap[sourceDisplayName].Tools = append(sourcesMap[sourceDisplayName].Tools, ToolSummary{
 			Name:        toolName,
 			DisplayName: displayName,
 			Description: tool.Function.Description,
