@@ -74,43 +74,144 @@ client.test_proxy("http://127.0.0.1:7890")
 
 ---
 
-### **JavaScript SDK（待更新）**
+### **JavaScript SDK（100%完成）**
 
-需要在 `nlui-client.ts` 中添加对应方法。
+`nlui-client.ts` 已完成所有扩展方法：
 
-**TODO:**
-- 添加所有 Phase 1-5 的方法
-- 更新 TypeScript 类型定义
-- 更新示例代码
+```typescript
+import NLUIClient from 'nlui-client';
 
-**预计时间:** 1-2 小时
+const client = new NLUIClient({ baseURL: 'http://localhost:9000' });
+
+// Phase 1: Targets
+await client.addTarget({ name: 'github', ... });
+await client.listTargets();
+await client.removeTarget('github');
+await client.probeTarget('https://api.example.com');
+
+// Phase 2: Tools
+await client.listTools();
+await client.listToolSources();
+await client.updateConversationTools(convId, { ... });
+
+// Phase 3: Messages
+await client.editMessage(convId, 2, 'new content', { onEvent: ... });
+await client.regenerateFrom(convId, 3, { onEvent: ... });
+await client.deleteMessage(convId, 5);
+
+// Phase 4: LLM Config
+await client.updateLLMConfig({ api_base: '...', api_key: '...', model: '...' });
+await client.probeLLMProviders();
+await client.fetchModels({ api_base: '...', api_key: '...' });
+
+// Phase 5: Proxy
+await client.updateProxyConfig('http://127.0.0.1:7890');
+await client.testProxy('http://127.0.0.1:7890');
+```
+
+**完成内容:**
+- ✅ 所有 Phase 1-5 的方法（26个新方法）
+- ✅ 完整的 TypeScript 类型定义
+- ✅ SSE 流处理重构（handleSSEStream 辅助方法）
+- ✅ 详细的使用文档和示例
 
 ---
 
-### **Go SDK（待更新）**
+### **Go SDK（100%完成）**
 
-需要在 `client.go` 中添加对应方法。
+`client.go` 已完成所有扩展方法：
 
-**TODO:**
-- 添加所有 Phase 1-5 的方法
-- 更新类型定义
-- 更新示例代码
+```go
+package main
 
-**预计时间:** 1-2 小时
+import (
+	"context"
+	"github.com/ZacharyZcR/NLUI/sdk/go/nluisdk"
+)
+
+func main() {
+	client := nluisdk.NewClient("http://localhost:9000")
+	ctx := context.Background()
+
+	// Phase 1: Targets
+	client.AddTarget(ctx, nluisdk.Target{ ... })
+	client.ListTargets(ctx)
+	client.RemoveTarget(ctx, "github")
+	client.ProbeTarget(ctx, "https://api.example.com")
+
+	// Phase 2: Tools
+	client.ListTools(ctx)
+	client.ListToolSources(ctx)
+	client.UpdateConversationTools(ctx, convID, nluisdk.ToolConfig{ ... })
+
+	// Phase 3: Messages
+	client.EditMessage(ctx, convID, 2, "new content", nluisdk.EditMessageOptions{ ... })
+	client.RegenerateFrom(ctx, convID, 3, nluisdk.RegenerateFromOptions{ ... })
+	client.DeleteMessage(ctx, convID, 5)
+
+	// Phase 4: LLM Config
+	client.UpdateLLMConfig(ctx, nluisdk.LLMConfig{ ... })
+	client.ProbeLLMProviders(ctx)
+	client.FetchModels(ctx, apiBase, apiKey)
+
+	// Phase 5: Proxy
+	client.UpdateProxyConfig(ctx, "http://127.0.0.1:7890")
+	client.TestProxy(ctx, "http://127.0.0.1:7890")
+}
+```
+
+**完成内容:**
+- ✅ 所有 Phase 1-5 的方法（26个新方法）
+- ✅ 完整的类型定义（Target, Tool, ToolSource, LLMConfig 等）
+- ✅ Context 支持（超时和取消操作）
+- ✅ 详细的使用文档和示例
 
 ---
 
-### **React Hooks（待更新）**
+### **React Hooks（100%完成）**
 
-需要基于新的 JS SDK 方法创建对应的 hooks。
+`use-nlui.ts` 已完成所有 hooks：
 
-**TODO:**
-- `useTargets()` - 管理 targets
-- `useTools()` - 管理工具
-- `useLLMConfig()` - 管理 LLM 配置
-- `useProxy()` - 管理代理
+```tsx
+import {
+  useNLUI,
+  useTargets,
+  useTools,
+  useLLMConfig,
+  useProxy,
+  useChat,
+  useConversations
+} from '@nlui/react';
 
-**预计时间:** 1 小时
+function App() {
+  const client = useNLUI({ baseURL: 'http://localhost:9000' });
+
+  // Phase 1: Targets
+  const { targets, add, remove, probe } = useTargets(client);
+
+  // Phase 2: Tools
+  const { tools, sources, updateConversationTools } = useTools(client);
+
+  // Phase 4: LLM Config
+  const { config, update, probeProviders, fetchModels } = useLLMConfig(client);
+
+  // Phase 5: Proxy
+  const { config: proxyConfig, update: updateProxy, test } = useProxy(client);
+
+  // 基础功能
+  const { messages, send } = useChat(client);
+  const { conversations, create, deleteConv } = useConversations(client);
+}
+```
+
+**完成内容:**
+- ✅ useTargets() - Targets 管理
+- ✅ useTools() - 工具管理
+- ✅ useLLMConfig() - LLM 配置管理
+- ✅ useProxy() - 代理配置
+- ✅ 完整的 TypeScript 类型定义
+- ✅ 性能优化（useCallback, useRef）
+- ✅ 详细的使用文档和完整示例
 
 ---
 
@@ -120,39 +221,36 @@ client.test_proxy("http://127.0.0.1:7890")
 |------|------|--------|
 | 服务器端 API | ✅ 完成 | 100% |
 | Python SDK | ✅ 完成 | 100% |
-| JavaScript SDK | 🔄 进行中 | 0% |
-| Go SDK | 🔄 进行中 | 0% |
-| React Hooks | 🔄 进行中 | 0% |
-| 文档 | 🔄 进行中 | 50% |
-| 示例代码 | 🔄 进行中 | 30% |
+| JavaScript SDK | ✅ 完成 | 100% |
+| Go SDK | ✅ 完成 | 100% |
+| React Hooks | ✅ 完成 | 100% |
+| 文档 | ✅ 完成 | 100% |
+| 示例代码 | ✅ 完成 | 100% |
 
-**总体完成度:** ~60%
+**总体完成度:** 100% 🎉
 
 ---
 
-## 🎯 下一步计划
+## 🎯 完成情况
 
-### **立即完成（优先级 P0）**
+### **已完成（优先级 P0）** ✅
 
-1. ✅ 服务器端 API（已完成）
-2. ✅ Python SDK（已完成）
-3. 📝 更新文档（进行中）
-   - 更新 `sdk/README.md`
-   - 更新 API 参考
-   - 更新 Python 示例
+1. ✅ 服务器端 API - 30 个新端点，热重载支持
+2. ✅ Python SDK - ExtendedNLUIClient，26 个新方法
+3. ✅ 更新文档 - 所有 SDK 的完整文档和示例
 
-### **后续完成（优先级 P1）**
+### **已完成（优先级 P1）** ✅
 
-4. JavaScript SDK 实现
-5. Go SDK 实现
-6. React Hooks 实现
-7. 完整的示例代码
+4. ✅ JavaScript SDK - 26 个新方法，完整类型定义
+5. ✅ Go SDK - 26 个新方法，Context 支持
+6. ✅ React Hooks - 7 个 hooks，性能优化
+7. ✅ 完整的示例代码 - 每个 SDK 都有详细示例
 
-### **可选完成（优先级 P2）**
+### **可选项（优先级 P2）**
 
-8. Async Python SDK 同步更新
-9. 单元测试
-10. 性能测试
+8. ⏭️ Async Python SDK 同步更新（可选，基础功能已通过同步 SDK 实现）
+9. ⏭️ 单元测试（建议后续添加）
+10. ⏭️ 性能测试（建议后续添加）
 
 ---
 
@@ -215,14 +313,37 @@ client.update_llm_config(
 
 ## 🎉 成就解锁
 
-- ✅ 功能对等度从 23% 提升至 100%（服务器端）
-- ✅ Python SDK 达到桌面端完全对等
+- ✅ 功能对等度从 23% 提升至 100%（所有组件）
+- ✅ 所有 SDK 达到桌面端完全对等
 - ✅ 支持热重载配置，无需重启
 - ✅ 30 个新 API 端点，0 breaking changes
 - ✅ 完整的类型提示和文档字符串
+- ✅ 4 种语言/框架 SDK（Python, JavaScript, Go, React）
+- ✅ 100% TypeScript 类型安全
+- ✅ 详细的文档和完整示例
 
-**总代码量:** ~1500 行（服务器端 + Python SDK）
+**总代码量:**
+- 服务器端：~650 行（handlers.go）
+- Python SDK：~380 行（extended_client.py）
+- JavaScript SDK：~350 行（nlui-client.ts）
+- Go SDK：~650 行（client.go）
+- React Hooks：~450 行（use-nlui.ts）
+- **总计：~2480 行核心代码**
 
-**总开发时间:** ~4 小时
+**文档量:**
+- 服务器端文档：已有
+- Python SDK README：已有
+- JavaScript SDK README：~320 行
+- Go SDK README：~340 行
+- React Hooks README：~410 行
+- 架构文档：~150 行
+- 功能对比：~280 行
+- 实现状态：~230 行
+- **总计：~1730 行文档**
 
-**剩余工作量:** ~4 小时（JS/Go SDK + 文档）
+**开发时间:**
+- Phase 1（服务器端 + Python SDK）：~4 小时
+- Phase 2（JavaScript SDK）：~1 小时
+- Phase 3（Go SDK）：~1.5 小时
+- Phase 4（React Hooks）：~1 小时
+- **总计：~7.5 小时**
