@@ -769,6 +769,17 @@ func (a *App) DeleteMessagesFrom(convID string, msgIndex int) string {
 	return ""
 }
 
+// DeleteMessage deletes a single message at the given index.
+func (a *App) DeleteMessage(convID string, msgIndex int) string {
+	if !a.ready {
+		return "not ready"
+	}
+	if err := a.engine.DeleteMessage(convID, msgIndex); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
 // RegenerateFrom regenerates from a specific message index (for retry).
 func (a *App) RegenerateFrom(convID string, fromIndex int) string {
 	if !a.ready {

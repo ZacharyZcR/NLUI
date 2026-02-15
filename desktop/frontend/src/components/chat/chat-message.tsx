@@ -30,7 +30,7 @@ export function ChatMessage({ message, isLast, onEdit, onDelete, onRetry }: Chat
     return <ToolResultMessage name={message.toolName} content={message.content} />;
   }
 
-  return <AssistantMessage content={message.content} isLast={isLast} onRetry={onRetry} />;
+  return <AssistantMessage content={message.content} isLast={isLast} onRetry={onRetry} onDelete={onDelete} />;
 }
 
 /* ── tool_call ── */
@@ -180,7 +180,7 @@ function UserMessage({ content, onEdit, onDelete }: { content: string; onEdit?: 
 }
 
 /* ── Assistant ── */
-function AssistantMessage({ content, isLast, onRetry }: { content: string; isLast?: boolean; onRetry?: () => void }) {
+function AssistantMessage({ content, isLast, onRetry, onDelete }: { content: string; isLast?: boolean; onRetry?: () => void; onDelete?: () => void }) {
   const { theme } = useI18n();
   const blocks = splitRenderBlocks(content);
   const hasRenderBlocks = blocks.length > 1 || blocks[0]?.type === "render";
@@ -205,6 +205,15 @@ function AssistantMessage({ content, isLast, onRetry }: { content: string; isLas
                 title="Retry"
               >
                 <RotateCw className="w-3 h-3" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-destructive/80 text-muted-foreground hover:text-foreground"
+                title="Delete"
+              >
+                <Trash2 className="w-3 h-3" />
               </button>
             )}
             <CopyBtn text={content} />
@@ -240,6 +249,15 @@ function AssistantMessage({ content, isLast, onRetry }: { content: string; isLas
               title="Retry"
             >
               <RotateCw className="w-3 h-3" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-destructive/80 text-muted-foreground hover:text-foreground"
+              title="Delete"
+            >
+              <Trash2 className="w-3 h-3" />
             </button>
           )}
           <CopyBtn text={content} />

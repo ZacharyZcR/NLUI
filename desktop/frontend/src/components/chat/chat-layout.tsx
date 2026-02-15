@@ -157,15 +157,18 @@ export function ChatLayout() {
           </nav>
         </header>
 
-        {view === "settings" ? (
+        <div className={view === "settings" ? "" : "hidden"}>
           <SettingsPanel onSaved={handleSettingsSaved} onClose={() => setView("chat")} />
-        ) : view === "targets" ? (
+        </div>
+        <div className={view === "targets" ? "" : "hidden"}>
           <TargetsPanel onClose={() => setView("chat")} />
-        ) : view === "tools" ? (
+        </div>
+        <div className={view === "tools" ? "" : "hidden"}>
           <ToolsPanel onClose={() => setView("chat")} />
-        ) : (
+        </div>
+        <div className={view === "chat" ? "flex flex-col flex-1 overflow-hidden" : "hidden"}>
           <ChatMain conversationId={activeId} onConversationCreated={handleConversationCreated} />
-        )}
+        </div>
       </div>
     </div>
   );

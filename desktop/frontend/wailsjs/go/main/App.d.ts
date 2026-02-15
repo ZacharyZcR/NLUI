@@ -10,6 +10,8 @@ export function ConfirmTool(arg1:boolean):Promise<void>;
 
 export function DeleteConversation(arg1:string):Promise<void>;
 
+export function DeleteMessage(arg1:string,arg2:number):Promise<string>;
+
 export function DeleteMessagesFrom(arg1:string,arg2:number):Promise<string>;
 
 export function EditMessage(arg1:string,arg2:number,arg3:string):Promise<string>;

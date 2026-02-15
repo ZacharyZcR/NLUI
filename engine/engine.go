@@ -131,6 +131,11 @@ func (e *Engine) DeleteMessagesFrom(convID string, msgIndex int) error {
 	return e.convMgr.DeleteMessagesFrom(convID, msgIndex)
 }
 
+// DeleteMessage deletes a single message at the given index.
+func (e *Engine) DeleteMessage(convID string, msgIndex int) error {
+	return e.convMgr.DeleteMessage(convID, msgIndex)
+}
+
 // RegenerateFrom regenerates the conversation from a specific message index.
 // Useful for retrying after the last assistant message.
 func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex int, authToken string, onEvent func(Event)) error {

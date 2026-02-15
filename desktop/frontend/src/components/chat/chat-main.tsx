@@ -3,10 +3,20 @@ import { AlertTriangle, Check, X, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
 import { useI18n } from "@/lib/i18n";
-import { Chat, ConfirmTool, GetConversationMessages, StopChat, EditMessage, DeleteMessagesFrom, RegenerateFrom } from "../../../wailsjs/go/main/App";
+import { Chat, ConfirmTool, GetConversationMessages, StopChat, EditMessage, DeleteMessage, RegenerateFrom } from "../../../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 import type { Message } from "@/lib/types";
 
@@ -37,6 +47,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
   const [loading, setLoading] = useState(false);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const convIdRef = useRef(conversationId);
 
@@ -202,28 +213,34 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
   );
 
   const handleDeleteMessage = useCallback(
-    async (msgIndex: number) => {
-      if (!conversationId || !confirm(t("chat.confirmDelete") || "Delete this message and all following messages?")) return;
-      try {
-        await DeleteMessagesFrom(conversationId, msgIndex);
-        // Reload messages
-        const msgs = await GetConversationMessages(conversationId);
-        setMessages(
-          (msgs || []).map((m: { id: string; role: string; content: string; tool_name?: string; tool_args?: string }) => ({
-            id: m.id,
-            role: m.role as Message["role"],
-            content: m.content || "",
-            toolName: m.tool_name,
-            toolArgs: m.tool_args,
-            timestamp: new Date(),
-          }))
-        );
-      } catch (err) {
-        console.error("Delete message failed:", err);
-      }
+    (msgIndex: number) => {
+      setPendingDeleteIndex(msgIndex);
     },
-    [conversationId, t]
+    []
   );
+
+  const confirmDelete = useCallback(async () => {
+    if (!conversationId || pendingDeleteIndex === null) return;
+    try {
+      await DeleteMessage(conversationId, pendingDeleteIndex);
+      // Reload messages
+      const msgs = await GetConversationMessages(conversationId);
+      setMessages(
+        (msgs || []).map((m: { id: string; role: string; content: string; tool_name?: string; tool_args?: string }) => ({
+          id: m.id,
+          role: m.role as Message["role"],
+          content: m.content || "",
+          toolName: m.tool_name,
+          toolArgs: m.tool_args,
+          timestamp: new Date(),
+        }))
+      );
+    } catch (err) {
+      console.error("Delete message failed:", err);
+    } finally {
+      setPendingDeleteIndex(null);
+    }
+  }, [conversationId, pendingDeleteIndex]);
 
   const handleRetryMessage = useCallback(
     async (msgIndex: number) => {
@@ -257,7 +274,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
               message={msg}
               isLast={idx === messages.length - 1 && msg.role === "assistant"}
               onEdit={msg.role === "user" ? (newContent) => handleEditMessage(idx, newContent) : undefined}
-              onDelete={msg.role === "user" ? () => handleDeleteMessage(idx) : undefined}
+              onDelete={() => handleDeleteMessage(idx)}
               onRetry={msg.role === "assistant" && idx === messages.length - 1 ? () => handleRetryMessage(idx) : undefined}
             />
           ))}
@@ -307,6 +324,24 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
           <div ref={scrollRef} />
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={pendingDeleteIndex !== null} onOpenChange={(open) => !open && setPendingDeleteIndex(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("chat.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("chat.deleteDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("chat.deleteCancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t("chat.deleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="relative">
         {usage && (
           <div className="absolute -top-6 right-2 sm:right-4 flex items-center gap-2 text-[10px] text-muted-foreground/50 font-mono select-none">
