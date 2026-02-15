@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Search, Upload, Plus, Trash2, Globe, Tag, FileText, Lock, Key, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
                       )}
                     </div>
                     <Button size="xs" variant="ghost" className="text-destructive/70 hover:text-destructive text-xs" onClick={() => handleRemoveTarget(tgt.name)}>
+                      <Trash2 className="w-3 h-3 mr-1" />
                       {t("targets.remove")}
                     </Button>
                   </div>
@@ -158,17 +160,22 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
 
             {/* URL + Probe */}
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">{t("targets.baseUrl")}</label>
+              <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                {t("targets.baseUrl")}
+              </label>
               <div className="flex gap-2">
                 <Input value={tgtURL} onChange={(e) => setTgtURL(e.target.value)} placeholder="http://localhost:8080" />
                 <Button variant="outline" size="sm" onClick={handleProbeTarget} disabled={!tgtURL || probing}>
-                  {probing ? "..." : t("targets.probe")}
+                  {probing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Search className="w-3.5 h-3.5 mr-1" />}
+                  {t("targets.probe")}
                 </Button>
               </div>
             </div>
 
             {/* Upload */}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={handleUploadSpec} disabled={probing}>
+              <Upload className="w-3.5 h-3.5 mr-1.5" />
               {t("targets.upload")}
             </Button>
 
@@ -177,7 +184,8 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
               <div className={`text-xs rounded-lg p-3 ${probeResult.found ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
                 {probeResult.found ? (
                   <>
-                    <div className="font-medium mb-1">
+                    <div className="font-medium mb-1 flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5" />
                       {t("targets.found")} — {probeResult.tools} endpoints
                     </div>
                     <div className="font-mono text-[11px] opacity-70 mb-1">{probeResult.spec_url}</div>
@@ -193,7 +201,10 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
                     )}
                   </>
                 ) : (
-                  <span>{t("targets.notFound")}: {probeResult.error}</span>
+                  <span className="flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {t("targets.notFound")}: {probeResult.error}
+                  </span>
                 )}
               </div>
             )}
@@ -201,11 +212,17 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
             {/* Name + Description */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">{t("targets.name")}</label>
+                <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <Tag className="w-3 h-3" />
+                  {t("targets.name")}
+                </label>
                 <Input value={tgtName} onChange={(e) => setTgtName(e.target.value)} placeholder="my-backend" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">{t("targets.description")}</label>
+                <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  {t("targets.description")}
+                </label>
                 <Input value={tgtDesc} onChange={(e) => setTgtDesc(e.target.value)} placeholder={t("targets.descPlaceholder")} />
               </div>
             </div>
@@ -213,7 +230,10 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
             {/* Auth */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">{t("targets.authType")}</label>
+                <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  {t("targets.authType")}
+                </label>
                 <div className="flex gap-1.5">
                   {["", "bearer", "header"].map((at) => (
                     <Badge
@@ -229,7 +249,10 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
               </div>
               {tgtAuth && (
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Token</label>
+                  <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <Key className="w-3 h-3" />
+                    Token
+                  </label>
                   <Input type="password" value={tgtToken} onChange={(e) => setTgtToken(e.target.value)} placeholder="Bearer token" />
                 </div>
               )}
@@ -238,6 +261,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
             {tgtError && <p className="text-xs text-destructive">{tgtError}</p>}
 
             <Button variant="outline" className="w-full" onClick={handleAddTarget} disabled={!tgtName || (!tgtURL && !tgtSpec)}>
+              <Plus className="w-4 h-4 mr-2" />
               {t("targets.addBtn")}
             </Button>
           </section>

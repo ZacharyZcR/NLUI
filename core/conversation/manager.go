@@ -108,6 +108,42 @@ func (m *Manager) Delete(id string) {
 	}
 }
 
+// EditMessage replaces the content of a message at the given index and truncates
+// all messages after it. Returns error if index is out of bounds.
+func (m *Manager) EditMessage(id string, index int, newContent string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	conv, ok := m.convs[id]
+	if !ok {
+		return fmt.Errorf("conversation not found")
+	}
+	if index < 0 || index >= len(conv.Messages) {
+		return fmt.Errorf("invalid message index")
+	}
+	conv.Messages[index].Content = newContent
+	conv.Messages = conv.Messages[:index+1]
+	conv.UpdatedAt = time.Now()
+	m.saveLocked(conv)
+	return nil
+}
+
+// DeleteMessagesFrom removes messages starting from the given index.
+func (m *Manager) DeleteMessagesFrom(id string, index int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	conv, ok := m.convs[id]
+	if !ok {
+		return fmt.Errorf("conversation not found")
+	}
+	if index < 0 || index >= len(conv.Messages) {
+		return fmt.Errorf("invalid message index")
+	}
+	conv.Messages = conv.Messages[:index]
+	conv.UpdatedAt = time.Now()
+	m.saveLocked(conv)
+	return nil
+}
+
 // --- persistence ---
 
 func (m *Manager) saveLocked(conv *Conversation) {

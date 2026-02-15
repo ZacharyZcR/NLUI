@@ -1,3 +1,4 @@
+import { X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 
@@ -50,6 +51,7 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
           variant="outline"
           size="sm"
         >
+          <Plus className="w-3.5 h-3.5 mr-1" />
           {t("sidebar.new")}
         </Button>
       </div>
@@ -78,15 +80,17 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNew, onDelete
                 <span className="text-[10px] opacity-40 ml-2 shrink-0 group-hover:hidden">
                   {relativeTime(conv.updated_at)}
                 </span>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(conv.id);
                   }}
-                  className="hidden group-hover:flex items-center justify-center w-5 h-5 shrink-0 ml-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-[11px]"
+                  className="hidden group-hover:flex w-5 h-5 shrink-0 ml-1 p-0 hover:text-destructive hover:bg-destructive/10"
                 >
-                  &#10005;
-                </button>
+                  <X className="w-3 h-3" />
+                </Button>
               </div>
             );
           })}

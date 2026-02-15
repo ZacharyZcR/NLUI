@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Plus, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
@@ -92,8 +93,8 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
                       <span className="text-[13px] font-mono font-medium truncate">
                         {tool.name}
                       </span>
-                      <span className="text-[11px] text-muted-foreground/40 ml-2 shrink-0">
-                        {isExpanded ? "\u2212" : "+"}
+                      <span className="text-muted-foreground/40 ml-2 shrink-0">
+                        {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                       </span>
                     </div>
                     {tool.description && (

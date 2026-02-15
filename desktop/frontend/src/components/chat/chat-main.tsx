@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle, Check, X, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
 import { useI18n } from "@/lib/i18n";
-import { Chat, ConfirmTool, GetConversationMessages } from "../../../wailsjs/go/main/App";
+import { Chat, ConfirmTool, GetConversationMessages, StopChat, EditMessage, DeleteMessagesFrom, RegenerateFrom } from "../../../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 import type { Message } from "@/lib/types";
 
@@ -179,6 +181,66 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
     [conversationId, scrollToBottom, t]
   );
 
+  const handleStopChat = useCallback(() => {
+    StopChat();
+    setLoading(false);
+  }, []);
+
+  const handleEditMessage = useCallback(
+    async (msgIndex: number, newContent: string) => {
+      if (!conversationId) return;
+      setLoading(true);
+      setUsage(null);
+      try {
+        await EditMessage(conversationId, msgIndex, newContent);
+      } catch (err) {
+        console.error("Edit message failed:", err);
+        setLoading(false);
+      }
+    },
+    [conversationId]
+  );
+
+  const handleDeleteMessage = useCallback(
+    async (msgIndex: number) => {
+      if (!conversationId || !confirm(t("chat.confirmDelete") || "Delete this message and all following messages?")) return;
+      try {
+        await DeleteMessagesFrom(conversationId, msgIndex);
+        // Reload messages
+        const msgs = await GetConversationMessages(conversationId);
+        setMessages(
+          (msgs || []).map((m: { id: string; role: string; content: string; tool_name?: string; tool_args?: string }) => ({
+            id: m.id,
+            role: m.role as Message["role"],
+            content: m.content || "",
+            toolName: m.tool_name,
+            toolArgs: m.tool_args,
+            timestamp: new Date(),
+          }))
+        );
+      } catch (err) {
+        console.error("Delete message failed:", err);
+      }
+    },
+    [conversationId, t]
+  );
+
+  const handleRetryMessage = useCallback(
+    async (msgIndex: number) => {
+      if (!conversationId) return;
+      setLoading(true);
+      setUsage(null);
+      try {
+        // Retry from the message before this assistant message
+        await RegenerateFrom(conversationId, msgIndex);
+      } catch (err) {
+        console.error("Retry failed:", err);
+        setLoading(false);
+      }
+    },
+    [conversationId]
+  );
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 min-h-0 overflow-y-auto px-2 sm:px-4 py-3">
@@ -189,34 +251,45 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
               <p className="text-sm text-muted-foreground/60">{t("chat.empty")}</p>
             </div>
           )}
-          {messages.map((msg) => (
-            <ChatMessage key={msg.id} message={msg} />
+          {messages.map((msg, idx) => (
+            <ChatMessage
+              key={msg.id}
+              message={msg}
+              isLast={idx === messages.length - 1 && msg.role === "assistant"}
+              onEdit={msg.role === "user" ? (newContent) => handleEditMessage(idx, newContent) : undefined}
+              onDelete={msg.role === "user" ? () => handleDeleteMessage(idx) : undefined}
+              onRetry={msg.role === "assistant" && idx === messages.length - 1 ? () => handleRetryMessage(idx) : undefined}
+            />
           ))}
 
           {/* Dangerous op confirmation */}
           {pendingConfirm && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3.5 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-destructive text-sm">&#9888;</span>
-                <span className="text-sm font-medium">{t("confirm.title")}</span>
-              </div>
-              <div>
-                <Badge variant="outline" className="text-[11px] font-mono border-destructive/25 text-destructive px-1.5 py-0">
-                  {pendingConfirm.name}
-                </Badge>
-                <pre className="mt-2 text-xs text-muted-foreground font-mono overflow-x-auto whitespace-pre-wrap max-h-32 leading-relaxed">
-                  {formatJSON(pendingConfirm.arguments)}
-                </pre>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleConfirm(true)}>
-                  {t("confirm.approve")}
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleConfirm(false)}>
-                  {t("confirm.reject")}
-                </Button>
-              </div>
-            </div>
+            <Card className="border-destructive/30 bg-destructive/5 py-3.5 gap-3">
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="text-sm font-medium">{t("confirm.title")}</span>
+                </div>
+                <div>
+                  <Badge variant="outline" className="text-[11px] font-mono border-destructive/25 text-destructive px-1.5 py-0">
+                    {pendingConfirm.name}
+                  </Badge>
+                  <pre className="mt-2 text-xs text-muted-foreground font-mono overflow-x-auto whitespace-pre-wrap max-h-32 leading-relaxed">
+                    {formatJSON(pendingConfirm.arguments)}
+                  </pre>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleConfirm(true)}>
+                    <Check className="w-3 h-3 mr-1" />
+                    {t("confirm.approve")}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleConfirm(false)}>
+                    <X className="w-3 h-3 mr-1" />
+                    {t("confirm.reject")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Thinking indicator */}
@@ -238,6 +311,14 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
         {usage && (
           <div className="absolute -top-6 right-2 sm:right-4 flex items-center gap-2 text-[10px] text-muted-foreground/50 font-mono select-none">
             <span>{usage.prompt_tokens}+{usage.completion_tokens}={usage.total_tokens} tokens</span>
+          </div>
+        )}
+        {loading && !pendingConfirm && (
+          <div className="absolute -top-10 left-2 sm:left-4">
+            <Button size="xs" variant="outline" onClick={handleStopChat} className="h-7">
+              <StopCircle className="w-3 h-3 mr-1" />
+              {t("chat.stop")}
+            </Button>
           </div>
         )}
         <ChatInput onSend={handleSend} disabled={loading} />

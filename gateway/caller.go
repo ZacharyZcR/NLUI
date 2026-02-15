@@ -9,17 +9,24 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Caller struct {
-	endpoints  map[string]*Endpoint
-	httpClient *http.Client
+	endpoints      map[string]*Endpoint
+	httpClient     *http.Client
+	healthCache    map[string]time.Time
+	healthCacheMu  sync.RWMutex
+	healthCacheTTL time.Duration
 }
 
 func NewCaller(endpoints map[string]*Endpoint) *Caller {
 	return &Caller{
-		endpoints:  endpoints,
-		httpClient: &http.Client{},
+		endpoints:      endpoints,
+		httpClient:     &http.Client{Timeout: 30 * time.Second},
+		healthCache:    make(map[string]time.Time),
+		healthCacheTTL: 30 * time.Second,
 	}
 }
 
@@ -38,6 +45,11 @@ func (c *Caller) Execute(ctx context.Context, toolName, argsJSON, authToken stri
 	ep, ok := c.endpoints[toolName]
 	if !ok {
 		return "", fmt.Errorf("unknown tool: %s", toolName)
+	}
+
+	// Check target server reachability
+	if err := c.checkHealth(ep.BaseURL); err != nil {
+		return "", fmt.Errorf("target server unreachable (%s): %w", ep.BaseURL, err)
 	}
 
 	var args map[string]interface{}
@@ -138,4 +150,33 @@ func (c *Caller) Execute(ctx context.Context, toolName, argsJSON, authToken stri
 		return fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(respBody)), nil
 	}
 	return string(respBody), nil
+}
+
+// checkHealth verifies that the target server is reachable.
+// Uses an in-memory cache to avoid repeated health checks.
+func (c *Caller) checkHealth(baseURL string) error {
+	// Check cache first
+	c.healthCacheMu.RLock()
+	lastCheck, exists := c.healthCache[baseURL]
+	c.healthCacheMu.RUnlock()
+
+	if exists && time.Since(lastCheck) < c.healthCacheTTL {
+		return nil // Cache hit — server was reachable recently
+	}
+
+	// Perform health check with short timeout
+	checkClient := &http.Client{Timeout: 2 * time.Second}
+	resp, err := checkClient.Head(baseURL)
+	if err != nil {
+		return fmt.Errorf("health check failed: %w", err)
+	}
+	resp.Body.Close()
+
+	// Any response (even 404) means server is reachable
+	// Update cache
+	c.healthCacheMu.Lock()
+	c.healthCache[baseURL] = time.Now()
+	c.healthCacheMu.Unlock()
+
+	return nil
 }

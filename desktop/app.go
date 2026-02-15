@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ZacharyZcR/Kelper/bootstrap"
@@ -23,13 +24,15 @@ import (
 )
 
 type App struct {
-	ctx        context.Context
-	engine     *engine.Engine
-	convMgr    *conversation.Manager // survives reinit
-	language   string
-	ready      bool
-	confirmCh  chan bool
-	mcpClients map[string]*mcp.Client
+	ctx          context.Context
+	engine       *engine.Engine
+	convMgr      *conversation.Manager // survives reinit
+	language     string
+	ready        bool
+	confirmCh    chan bool
+	mcpClients   map[string]*mcp.Client
+	chatCancel   context.CancelFunc // for stopping active chat
+	chatCancelMu sync.Mutex
 }
 
 type ConversationInfo struct {
@@ -275,7 +278,7 @@ func (a *App) GetCurrentConfig() map[string]interface{} {
 	return map[string]interface{}{
 		"exists":   true,
 		"api_base": cfg.LLM.APIBase,
-		"api_key":  maskKey(cfg.LLM.APIKey),
+		"api_key":  cfg.LLM.APIKey, // Desktop app: return full key for editing
 		"model":    cfg.LLM.Model,
 		"language": cfg.Language,
 		"proxy":    cfg.Proxy,
@@ -508,9 +511,20 @@ func (a *App) Chat(message, conversationID string) string {
 		return ""
 	}
 
+	// Create cancellable context for this chat
+	chatCtx, cancel := context.WithCancel(a.ctx)
+	a.chatCancelMu.Lock()
+	a.chatCancel = cancel
+	a.chatCancelMu.Unlock()
+	defer func() {
+		a.chatCancelMu.Lock()
+		a.chatCancel = nil
+		a.chatCancelMu.Unlock()
+	}()
+
 	var lastUsage interface{}
 
-	convID, err := a.engine.Chat(a.ctx, conversationID, message, "", func(event engine.Event) {
+	convID, err := a.engine.Chat(chatCtx, conversationID, message, "", func(event engine.Event) {
 		if event.Type == "usage" {
 			lastUsage = event.Data
 			return
@@ -683,4 +697,123 @@ func (a *App) GetInfo() map[string]interface{} {
 		"tools":    toolCount,
 		"ready":    a.ready,
 	}
+}
+
+// StopChat cancels the current active chat if any.
+func (a *App) StopChat() {
+	a.chatCancelMu.Lock()
+	defer a.chatCancelMu.Unlock()
+	if a.chatCancel != nil {
+		a.chatCancel()
+	}
+}
+
+// EditMessage edits a message at the given index and regenerates from that point.
+// Frontend must convert message display index to actual Messages array index.
+func (a *App) EditMessage(convID string, msgIndex int, newContent string) string {
+	if !a.ready {
+		return "not ready"
+	}
+
+	chatCtx, cancel := context.WithCancel(a.ctx)
+	a.chatCancelMu.Lock()
+	a.chatCancel = cancel
+	a.chatCancelMu.Unlock()
+	defer func() {
+		a.chatCancelMu.Lock()
+		a.chatCancel = nil
+		a.chatCancelMu.Unlock()
+	}()
+
+	var lastUsage interface{}
+	err := a.engine.EditMessageAndRegenerate(chatCtx, convID, msgIndex, newContent, "", func(event engine.Event) {
+		if event.Type == "usage" {
+			lastUsage = event.Data
+			return
+		}
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": event.Type,
+			"data": event.Data,
+		})
+	})
+
+	if err != nil {
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": "error",
+			"data": map[string]string{"error": err.Error()},
+		})
+		return err.Error()
+	}
+
+	doneData := map[string]interface{}{
+		"conversation_id": convID,
+	}
+	if lastUsage != nil {
+		doneData["usage"] = lastUsage
+	}
+	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+		"type": "done",
+		"data": doneData,
+	})
+	return ""
+}
+
+// DeleteMessagesFrom deletes messages starting from the given index.
+func (a *App) DeleteMessagesFrom(convID string, msgIndex int) string {
+	if !a.ready {
+		return "not ready"
+	}
+	if err := a.engine.DeleteMessagesFrom(convID, msgIndex); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
+// RegenerateFrom regenerates from a specific message index (for retry).
+func (a *App) RegenerateFrom(convID string, fromIndex int) string {
+	if !a.ready {
+		return "not ready"
+	}
+
+	chatCtx, cancel := context.WithCancel(a.ctx)
+	a.chatCancelMu.Lock()
+	a.chatCancel = cancel
+	a.chatCancelMu.Unlock()
+	defer func() {
+		a.chatCancelMu.Lock()
+		a.chatCancel = nil
+		a.chatCancelMu.Unlock()
+	}()
+
+	var lastUsage interface{}
+	err := a.engine.RegenerateFrom(chatCtx, convID, fromIndex, "", func(event engine.Event) {
+		if event.Type == "usage" {
+			lastUsage = event.Data
+			return
+		}
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": event.Type,
+			"data": event.Data,
+		})
+	})
+
+	if err != nil {
+		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+			"type": "error",
+			"data": map[string]string{"error": err.Error()},
+		})
+		return err.Error()
+	}
+
+	doneData := map[string]interface{}{
+		"conversation_id": convID,
+	}
+	if lastUsage != nil {
+		doneData["usage"] = lastUsage
+	}
+	wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
+		"type": "done",
+		"data": doneData,
+	})
+	return ""
 }

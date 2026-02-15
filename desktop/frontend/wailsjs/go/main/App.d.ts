@@ -10,6 +10,10 @@ export function ConfirmTool(arg1:boolean):Promise<void>;
 
 export function DeleteConversation(arg1:string):Promise<void>;
 
+export function DeleteMessagesFrom(arg1:string,arg2:number):Promise<string>;
+
+export function EditMessage(arg1:string,arg2:number,arg3:string):Promise<string>;
+
 export function FetchModels(arg1:string,arg2:string):Promise<Array<string>>;
 
 export function GetConfigDir():Promise<string>;
@@ -30,11 +34,15 @@ export function ProbeProviders():Promise<Array<main.ProviderInfo>>;
 
 export function ProbeTarget(arg1:string):Promise<Record<string, any>>;
 
+export function RegenerateFrom(arg1:string,arg2:number):Promise<string>;
+
 export function RemoveTarget(arg1:string):Promise<string>;
 
 export function SaveLLMConfig(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function SaveProxy(arg1:string):Promise<string>;
+
+export function StopChat():Promise<void>;
 
 export function TestProxy(arg1:string):Promise<string>;
 

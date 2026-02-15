@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { ChevronDown, ChevronRight, Check, Copy, Edit2, Trash2, RotateCw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { MdPreview } from "md-editor-rt";
 import "md-editor-rt/lib/preview.css";
 import { useI18n } from "@/lib/i18n";
@@ -6,16 +9,17 @@ import type { Message } from "@/lib/types";
 import { splitRenderBlocks } from "@/lib/render-blocks";
 import { RichResult } from "./renderers/rich-result";
 
-export function ChatMessage({ message }: { message: Message }) {
+interface ChatMessageProps {
+  message: Message;
+  isLast?: boolean;
+  onEdit?: (newContent: string) => void;
+  onDelete?: () => void;
+  onRetry?: () => void;
+}
+
+export function ChatMessage({ message, isLast, onEdit, onDelete, onRetry }: ChatMessageProps) {
   if (message.role === "user") {
-    return (
-      <div className="flex justify-end group">
-        <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-primary-foreground shadow-sm relative">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
-          <CopyBtn text={message.content} />
-        </div>
-      </div>
-    );
+    return <UserMessage content={message.content} onEdit={onEdit} onDelete={onDelete} />;
   }
 
   if (message.role === "tool_call") {
@@ -26,7 +30,7 @@ export function ChatMessage({ message }: { message: Message }) {
     return <ToolResultMessage name={message.toolName} content={message.content} />;
   }
 
-  return <AssistantMessage content={message.content} />;
+  return <AssistantMessage content={message.content} isLast={isLast} onRetry={onRetry} />;
 }
 
 /* ── tool_call ── */
@@ -39,7 +43,11 @@ function ToolCallMessage({ name, args }: { name?: string; args?: string }) {
         onClick={() => setOpen(!open)}
       >
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="text-amber-500 dark:text-amber-400 text-[10px]">{open ? "\u25BC" : "\u25B6"}</span>
+          {open ? (
+            <ChevronDown className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+          ) : (
+            <ChevronRight className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+          )}
           <span className="font-mono font-medium text-foreground/70">{name}</span>
           {!open && args && (
             <span className="text-muted-foreground/40 truncate flex-1 font-mono text-[11px]">
@@ -70,7 +78,11 @@ function ToolResultMessage({ name, content }: { name?: string; content: string }
         onClick={() => setOpen(!open)}
       >
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="text-emerald-500 dark:text-emerald-400 text-[10px]">{open ? "\u25BC" : "\u2713"}</span>
+          {open ? (
+            <ChevronDown className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+          ) : (
+            <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+          )}
           <span className="font-mono font-medium text-foreground/70">{name}</span>
           <span className="text-muted-foreground/30 text-[10px]">{size}</span>
           {!open && (
@@ -95,15 +107,87 @@ function ToolResultMessage({ name, content }: { name?: string; content: string }
   );
 }
 
+/* ── User ── */
+function UserMessage({ content, onEdit, onDelete }: { content: string; onEdit?: (newContent: string) => void; onDelete?: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(content);
+
+  const handleSave = () => {
+    if (editValue.trim() && onEdit) {
+      onEdit(editValue.trim());
+      setEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditValue(content);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-br-md bg-primary/10 px-4 py-2.5 shadow-sm space-y-2">
+          <Textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="min-h-[60px] text-sm"
+            autoFocus
+          />
+          <div className="flex gap-2 justify-end">
+            <Button size="xs" variant="outline" onClick={handleCancel}>
+              <X className="w-3 h-3 mr-1" />
+              Cancel
+            </Button>
+            <Button size="xs" onClick={handleSave}>
+              <Check className="w-3 h-3 mr-1" />
+              Save & Regenerate
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-end group/user">
+      <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-primary-foreground shadow-sm relative">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
+        <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/user:opacity-100 transition-opacity flex gap-1">
+          {onEdit && (
+            <button
+              onClick={() => setEditing(true)}
+              className="w-6 h-6 flex items-center justify-center rounded bg-background/20 hover:bg-background/30 backdrop-blur-sm text-[11px]"
+              title="Edit"
+            >
+              <Edit2 className="w-3 h-3" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="w-6 h-6 flex items-center justify-center rounded bg-background/20 hover:bg-destructive/80 backdrop-blur-sm text-[11px]"
+              title="Delete"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+          <CopyBtn text={content} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Assistant ── */
-function AssistantMessage({ content }: { content: string }) {
+function AssistantMessage({ content, isLast, onRetry }: { content: string; isLast?: boolean; onRetry?: () => void }) {
   const { theme } = useI18n();
   const blocks = splitRenderBlocks(content);
   const hasRenderBlocks = blocks.length > 1 || blocks[0]?.type === "render";
 
   if (!hasRenderBlocks) {
     return (
-      <div className="flex justify-start group">
+      <div className="flex justify-start group/assistant">
         <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-bl-md bg-muted/80 px-4 py-2.5 shadow-sm overflow-hidden relative">
           <MdPreview
             modelValue={content}
@@ -113,14 +197,25 @@ function AssistantMessage({ content }: { content: string }) {
             language="en-US"
             className="kelper-md"
           />
-          <CopyBtn text={content} />
+          <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/assistant:opacity-100 transition-opacity flex gap-1">
+            {isLast && onRetry && (
+              <button
+                onClick={onRetry}
+                className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
+                title="Retry"
+              >
+                <RotateCw className="w-3 h-3" />
+              </button>
+            )}
+            <CopyBtn text={content} />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex justify-start group">
+    <div className="flex justify-start group/assistant">
       <div className="max-w-[85%] md:max-w-[75%] rounded-2xl rounded-bl-md bg-muted/80 px-4 py-2.5 shadow-sm overflow-hidden relative space-y-2">
         {blocks.map((block, i) =>
           block.type === "markdown" ? (
@@ -137,7 +232,18 @@ function AssistantMessage({ content }: { content: string }) {
             <RichResult key={i} raw={block.data} forceType={block.hint} />
           )
         )}
-        <CopyBtn text={content} />
+        <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/assistant:opacity-100 transition-opacity flex gap-1">
+          {isLast && onRetry && (
+            <button
+              onClick={onRetry}
+              className="w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm hover:bg-background/80 text-muted-foreground hover:text-foreground"
+              title="Retry"
+            >
+              <RotateCw className="w-3 h-3" />
+            </button>
+          )}
+          <CopyBtn text={content} />
+        </div>
       </div>
     </div>
   );
@@ -155,10 +261,10 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm text-[11px] text-muted-foreground hover:text-foreground"
+      className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded bg-background/60 backdrop-blur-sm text-muted-foreground hover:text-foreground"
       title="Copy"
     >
-      {copied ? "\u2713" : "\u2398"}
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
     </button>
   );
 }

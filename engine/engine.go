@@ -111,3 +111,38 @@ func (e *Engine) ListConversations() []*Conversation {
 func (e *Engine) DeleteConversation(id string) {
 	e.convMgr.Delete(id)
 }
+
+// EditMessageAndRegenerate edits a message and regenerates from that point.
+func (e *Engine) EditMessageAndRegenerate(ctx context.Context, convID string, msgIndex int, newContent, authToken string, onEvent func(Event)) error {
+	if err := e.convMgr.EditMessage(convID, msgIndex, newContent); err != nil {
+		return err
+	}
+	conv := e.convMgr.Get(convID)
+	if conv == nil {
+		return fmt.Errorf("conversation not found")
+	}
+	finalMessages, err := e.loop.Run(ctx, conv.Messages, e.tools, authToken, onEvent)
+	e.convMgr.UpdateMessages(convID, finalMessages)
+	return err
+}
+
+// DeleteMessagesFrom deletes messages starting from the given index.
+func (e *Engine) DeleteMessagesFrom(convID string, msgIndex int) error {
+	return e.convMgr.DeleteMessagesFrom(convID, msgIndex)
+}
+
+// RegenerateFrom regenerates the conversation from a specific message index.
+// Useful for retrying after the last assistant message.
+func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex int, authToken string, onEvent func(Event)) error {
+	conv := e.convMgr.Get(convID)
+	if conv == nil {
+		return fmt.Errorf("conversation not found")
+	}
+	if fromIndex < 0 || fromIndex > len(conv.Messages) {
+		return fmt.Errorf("invalid message index")
+	}
+	truncated := conv.Messages[:fromIndex]
+	finalMessages, err := e.loop.Run(ctx, truncated, e.tools, authToken, onEvent)
+	e.convMgr.UpdateMessages(convID, finalMessages)
+	return err
+}

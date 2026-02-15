@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Check, Shield, Play, RefreshCw, Download, ArrowRight, Globe, Key, Cpu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,7 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
     GetCurrentConfig().then((cfg) => {
       if (cfg.exists) {
         setApiBase((cfg.api_base as string) || "");
+        setApiKey((cfg.api_key as string) || "");
         setModel((cfg.model as string) || "");
         const p = (cfg.proxy as string) || "";
         setProxy(p);
@@ -173,7 +175,8 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                 onClick={handleSaveProxy}
                 disabled={savingProxy || !proxyDirty}
               >
-                {savingProxy ? "..." : t("settings.proxySave")}
+                {savingProxy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span className="ml-1.5">{t("settings.proxySave")}</span>
               </Button>
               <Button
                 variant="outline"
@@ -181,7 +184,8 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                 onClick={handleTestProxy}
                 disabled={testingProxy || !proxySaved}
               >
-                {testingProxy ? "..." : t("settings.proxyTest")}
+                {testingProxy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                <span className="ml-1.5">{t("settings.proxyTest")}</span>
               </Button>
             </div>
             {proxyTestResult && (
@@ -199,6 +203,7 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                 {t("settings.detected")}
               </h3>
               <Button variant="ghost" size="xs" onClick={scan} disabled={scanning}>
+                {scanning ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
                 {scanning ? t("settings.scanning") : t("settings.rescan")}
               </Button>
             </div>
@@ -223,6 +228,7 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
                       <span className="text-xs text-muted-foreground font-mono">{p.api_base}</span>
                     </div>
                     <Button size="xs" variant={apiBase === p.api_base ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); handleUseProvider(p); }}>
+                      <ArrowRight className="w-3 h-3 mr-1" />
                       {t("settings.use")}
                     </Button>
                   </div>
@@ -247,18 +253,28 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
               {t("settings.manual")}
             </h3>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">API Base</label>
+              <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                API Base
+              </label>
               <Input value={apiBase} onChange={(e) => setApiBase(e.target.value)} placeholder="http://localhost:11434/v1" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">API Key</label>
+              <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Key className="w-3 h-3" />
+                API Key
+              </label>
               <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={t("settings.keyPlaceholder")} />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-muted-foreground">Model</label>
+                <label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Cpu className="w-3 h-3" />
+                  Model
+                </label>
                 <Button variant="outline" size="xs" onClick={handleFetchModels} disabled={!apiBase || loadingModels}>
-                  {loadingModels ? "..." : t("settings.fetchModels")}
+                  {loadingModels ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Download className="w-3 h-3 mr-1" />}
+                  {t("settings.fetchModels")}
                 </Button>
               </div>
               {fetchStatus && (
@@ -286,6 +302,7 @@ export function SettingsPanel({ onSaved, onClose }: SettingsPanelProps) {
 
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button className="w-full" onClick={handleSaveLLM} disabled={saving || !apiBase || !model}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
             {saving ? t("settings.saving") : t("settings.save")}
           </Button>
         </div>

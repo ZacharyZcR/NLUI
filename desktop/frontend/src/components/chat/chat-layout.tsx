@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Menu, Sun, Moon, Target, Wrench, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatSidebar } from "./chat-sidebar";
 import { ChatMain } from "./chat-main";
@@ -107,37 +108,43 @@ export function ChatLayout() {
         {/* Title bar — draggable for Wails window */}
         <header className="wails-drag flex items-center justify-between px-5 h-12 border-b bg-card/60 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-2">
-            <button
-              className="wails-nodrag md:hidden flex items-center justify-center w-7 h-7 rounded hover:bg-accent transition-colors text-sm"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="wails-nodrag md:hidden w-7 h-7 p-0"
               onClick={() => setSidebarOpen(true)}
             >
-              &#9776;
-            </button>
+              <Menu className="w-4 h-4" />
+            </Button>
             <h1 className="text-sm font-semibold tracking-wide select-none">
               {t("app.title")}
             </h1>
           </div>
           <nav className="wails-nodrag flex items-center gap-0.5">
-            {(["targets", "tools", "settings"] as const).map((key) => (
-              <Button
-                key={key}
-                variant={view === key ? "secondary" : "ghost"}
-                size="sm"
-                className="text-xs h-7 px-2.5"
-                onClick={() => toggleView(key)}
-              >
-                {t(`${key}.btn` as "targets.btn" | "tools.btn" | "settings.btn")}
-              </Button>
-            ))}
+            {(["targets", "tools", "settings"] as const).map((key) => {
+              const Icon = key === "targets" ? Target : key === "tools" ? Wrench : Settings;
+              return (
+                <Button
+                  key={key}
+                  variant={view === key ? "secondary" : "ghost"}
+                  size="sm"
+                  className="text-xs h-7 px-2.5"
+                  onClick={() => toggleView(key)}
+                >
+                  <Icon className="w-3.5 h-3.5 mr-1" />
+                  {t(`${key}.btn` as "targets.btn" | "tools.btn" | "settings.btn")}
+                </Button>
+              );
+            })}
             <div className="w-px h-4 bg-border mx-1" />
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs w-7 h-7"
+              className="w-7 h-7 p-0"
               onClick={toggleTheme}
               title={theme === "dark" ? "Light mode" : "Dark mode"}
             >
-              {theme === "dark" ? "\u2600" : "\u263E"}
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
             <Button
               variant="ghost"

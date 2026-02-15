@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Braces, SquareDashedBottom } from "lucide-react";
 import { detectShape } from "@/lib/detect-shape";
 import type { RenderHint } from "@/lib/render-blocks";
 import { DataTable } from "./data-table";
@@ -24,10 +25,10 @@ export function RichResult({ raw, forceType }: RichResultProps) {
       {hasRich && (
         <button
           onClick={(e) => { e.stopPropagation(); setShowRaw(!showRaw); }}
-          className="absolute top-0 right-0 z-10 px-1.5 py-0.5 rounded text-[10px] font-mono text-muted-foreground hover:text-foreground bg-muted/70 hover:bg-muted transition-colors"
+          className="absolute top-0 right-0 z-10 p-1 rounded text-muted-foreground hover:text-foreground bg-muted/70 hover:bg-muted transition-colors"
           title={showRaw ? "Rich view" : "Raw JSON"}
         >
-          {showRaw ? "\u25A6" : "{ }"}
+          {showRaw ? <SquareDashedBottom className="w-3 h-3" /> : <Braces className="w-3 h-3" />}
         </button>
       )}
       {showRaw ? (

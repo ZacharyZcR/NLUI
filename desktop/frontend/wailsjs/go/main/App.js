@@ -18,6 +18,14 @@ export function DeleteConversation(arg1) {
   return window['go']['main']['App']['DeleteConversation'](arg1);
 }
 
+export function DeleteMessagesFrom(arg1, arg2) {
+  return window['go']['main']['App']['DeleteMessagesFrom'](arg1, arg2);
+}
+
+export function EditMessage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['EditMessage'](arg1, arg2, arg3);
+}
+
 export function FetchModels(arg1, arg2) {
   return window['go']['main']['App']['FetchModels'](arg1, arg2);
 }
@@ -58,6 +66,10 @@ export function ProbeTarget(arg1) {
   return window['go']['main']['App']['ProbeTarget'](arg1);
 }
 
+export function RegenerateFrom(arg1, arg2) {
+  return window['go']['main']['App']['RegenerateFrom'](arg1, arg2);
+}
+
 export function RemoveTarget(arg1) {
   return window['go']['main']['App']['RemoveTarget'](arg1);
 }
@@ -68,6 +80,10 @@ export function SaveLLMConfig(arg1, arg2, arg3) {
 
 export function SaveProxy(arg1) {
   return window['go']['main']['App']['SaveProxy'](arg1);
+}
+
+export function StopChat() {
+  return window['go']['main']['App']['StopChat']();
 }
 
 export function TestProxy(arg1) {

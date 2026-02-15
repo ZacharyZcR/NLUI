@@ -1,4 +1,6 @@
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { useState, useRef, type KeyboardEvent } from "react";
 
@@ -40,7 +42,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   return (
     <div className="border-t bg-card/40 px-2 sm:px-4 py-3 shrink-0">
       <div className="flex gap-2 items-end max-w-none md:max-w-3xl mx-auto">
-        <textarea
+        <Textarea
           ref={textareaRef}
           value={value}
           onChange={handleInput}
@@ -48,7 +50,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           placeholder={t("chat.placeholder")}
           disabled={disabled}
           rows={1}
-          className="flex-1 min-h-[40px] max-h-[160px] resize-none rounded-xl border bg-background px-3.5 py-2.5 text-sm leading-relaxed placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring/40 disabled:opacity-40 transition-shadow"
+          className="flex-1 min-h-[40px] max-h-[160px] resize-none rounded-xl px-3.5 py-2.5 leading-relaxed"
         />
         <Button
           onClick={handleSend}
@@ -56,6 +58,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           size="sm"
           className="h-[40px] px-5 rounded-xl shrink-0"
         >
+          <Send className="w-4 h-4 mr-1.5" />
           {t("chat.send")}
         </Button>
       </div>
