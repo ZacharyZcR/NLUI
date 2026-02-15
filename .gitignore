@@ -6,3 +6,5 @@ kelper.yaml
 .claude/settings.local.json
 desktop/desktop.exe
 **/__pycache__/
+*.syso
+desktop/build/
