@@ -34,16 +34,18 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
   const [config, setConfig] = useState<ToolConfig>({ enabled_sources: [], disabled_tools: [] });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showPanel, setShowPanel] = useState(false);
+  const [localConvId, setLocalConvId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const availableSources = await GetAvailableSources();
     setSources(availableSources || []);
 
-    if (conversationId) {
-      const cfg = await GetToolConfig(conversationId);
+    const activeId = conversationId || localConvId;
+    if (activeId) {
+      const cfg = await GetToolConfig(activeId);
       setConfig(cfg || { enabled_sources: [], disabled_tools: [] });
     }
-  }, [conversationId]);
+  }, [conversationId, localConvId]);
 
   useEffect(() => {
     loadData();
@@ -58,15 +60,25 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
     };
   }, [loadData]);
 
+  // Clear localConvId when conversationId is set from parent
+  useEffect(() => {
+    if (conversationId) {
+      setLocalConvId(null);
+    }
+  }, [conversationId]);
+
   const toggleSource = useCallback(
     async (sourceName: string) => {
-      let activeConvId = conversationId;
+      let activeConvId = conversationId || localConvId;
 
       // If no conversation exists, create one first
       if (!activeConvId) {
         activeConvId = await CreateEmptyConversation();
-        if (activeConvId && onConversationCreated) {
-          onConversationCreated(activeConvId);
+        if (activeConvId) {
+          setLocalConvId(activeConvId);
+          if (onConversationCreated) {
+            onConversationCreated(activeConvId);
+          }
         }
       }
 
@@ -92,18 +104,21 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
       const updatedConfig = await GetToolConfig(activeConvId);
       setConfig(updatedConfig || { enabled_sources: [], disabled_tools: [] });
     },
-    [conversationId, config, onConversationCreated]
+    [conversationId, localConvId, config, onConversationCreated]
   );
 
   const toggleTool = useCallback(
     async (toolName: string) => {
-      let activeConvId = conversationId;
+      let activeConvId = conversationId || localConvId;
 
       // If no conversation exists, create one first
       if (!activeConvId) {
         activeConvId = await CreateEmptyConversation();
-        if (activeConvId && onConversationCreated) {
-          onConversationCreated(activeConvId);
+        if (activeConvId) {
+          setLocalConvId(activeConvId);
+          if (onConversationCreated) {
+            onConversationCreated(activeConvId);
+          }
         }
       }
 
@@ -124,7 +139,7 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
       const updatedConfig = await GetToolConfig(activeConvId);
       setConfig(updatedConfig || { enabled_sources: [], disabled_tools: [] });
     },
-    [conversationId, config, onConversationCreated]
+    [conversationId, localConvId, config, onConversationCreated]
   );
 
   const toggleExpanded = (sourceName: string) => {
