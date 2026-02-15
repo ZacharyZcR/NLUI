@@ -105,8 +105,10 @@ func (a *App) initialize() {
 	for _, ep := range allEndpoints {
 		if ep.TargetDisplayName != "" && ep.TargetName != "" {
 			a.targetDisplayMap[ep.TargetName] = ep.TargetDisplayName
+			fmt.Fprintf(os.Stderr, "Target mapping: %q -> %q\n", ep.TargetName, ep.TargetDisplayName)
 		}
 	}
+	fmt.Fprintf(os.Stderr, "Built targetDisplayMap with %d entries\n", len(a.targetDisplayMap))
 
 	mcpClients, mcpTools := bootstrap.InitMCPClients(cfg.MCP.Clients)
 	allTools = append(allTools, mcpTools...)
@@ -694,6 +696,9 @@ func (a *App) ListTools() []ToolInfo {
 		if a.targetDisplayMap != nil {
 			if dn, ok := a.targetDisplayMap[targetName]; ok {
 				displayName = dn
+				fmt.Fprintf(os.Stderr, "ListTools: %q -> %q\n", targetName, displayName)
+			} else {
+				fmt.Fprintf(os.Stderr, "ListTools: %q not found in map\n", targetName)
 			}
 		}
 

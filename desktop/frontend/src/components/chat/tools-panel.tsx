@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 import { useI18n } from "@/lib/i18n";
-import { ListTools, GetConfigDir } from "../../../wailsjs/go/main/App";
+import { ListTools } from "../../../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 
 interface ToolInfo {
@@ -21,7 +21,6 @@ interface ToolsPanelProps {
 export function ToolsPanel({ onClose }: ToolsPanelProps) {
   const { t } = useI18n();
   const [tools, setTools] = useState<ToolInfo[]>([]);
-  const [configDir, setConfigDir] = useState("");
   const [expandedTargets, setExpandedTargets] = useState<Set<string>>(new Set());
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
 
@@ -39,7 +38,6 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
 
   useEffect(() => {
     refresh();
-    GetConfigDir().then(setConfigDir).catch(() => {});
 
     // Listen for tools-updated event from backend
     EventsOn("tools-updated", () => {
@@ -80,12 +78,6 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5">
         <div className="max-w-none sm:max-w-lg mx-auto space-y-5">
-          {configDir && (
-            <div className="text-[11px] text-muted-foreground/40 font-mono truncate">
-              {configDir}
-            </div>
-          )}
-
           {tools.length === 0 && (
             <p className="text-xs text-muted-foreground/50 py-10 text-center">
               {t("tools.empty")}
