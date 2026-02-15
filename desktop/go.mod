@@ -1,14 +1,14 @@
-module github.com/ZacharyZcR/Kelper/desktop
+module github.com/ZacharyZcR/NLUI/desktop
 
 go 1.25.7
 
 require (
-	github.com/ZacharyZcR/Kelper v0.0.0-00010101000000-000000000000
+	github.com/ZacharyZcR/NLUI v0.0.0-00010101000000-000000000000
 	github.com/wailsapp/wails/v2 v2.11.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/ZacharyZcR/Kelper => ..
+replace github.com/ZacharyZcR/NLUI => ..
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kelper",
-  description: "AI Middleware",
+  title: "NLUI",
+  description: "Natural Language User Interface",
 };
 
 export default function RootLayout({
