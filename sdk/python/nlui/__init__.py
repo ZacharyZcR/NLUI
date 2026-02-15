@@ -6,6 +6,7 @@ NLUI Python SDK
 
 from .client import NLUIClient
 from .async_client import AsyncNLUIClient
+from .extended_client import ExtendedNLUIClient
 from .types import (
     Conversation,
     Message,
@@ -14,13 +15,17 @@ from .types import (
     InfoResponse,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "NLUIClient",
     "AsyncNLUIClient",
+    "ExtendedNLUIClient",
     "Conversation",
     "Message",
     "ChatEvent",
     "HealthResponse",
     "InfoResponse",
 ]
+
+# 默认使用扩展客户端
+NLUIClient = ExtendedNLUIClient
