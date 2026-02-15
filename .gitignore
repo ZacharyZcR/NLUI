@@ -18,4 +18,5 @@ sdk/*/dist/
 sdk/*/node_modules/
 
 # TypeScript
+*.d.ts
 *.d.ts.map
