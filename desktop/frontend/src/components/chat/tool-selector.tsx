@@ -86,9 +86,11 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
         newEnabled = [...currentEnabled, sourceName];
       }
 
-      const newConfig = { ...config, enabled_sources: newEnabled };
       await UpdateToolConfig(activeConvId, newEnabled, config.disabled_tools || []);
-      setConfig(newConfig);
+
+      // Reload config from backend to ensure UI reflects actual state
+      const updatedConfig = await GetToolConfig(activeConvId);
+      setConfig(updatedConfig || { enabled_sources: [], disabled_tools: [] });
     },
     [conversationId, config, onConversationCreated]
   );
@@ -116,9 +118,11 @@ export function ToolSelector({ conversationId, onConversationCreated }: ToolSele
         newDisabled = [...currentDisabled, toolName];
       }
 
-      const newConfig = { ...config, disabled_tools: newDisabled };
       await UpdateToolConfig(activeConvId, config.enabled_sources || [], newDisabled);
-      setConfig(newConfig);
+
+      // Reload config from backend to ensure UI reflects actual state
+      const updatedConfig = await GetToolConfig(activeConvId);
+      setConfig(updatedConfig || { enabled_sources: [], disabled_tools: [] });
     },
     [conversationId, config, onConversationCreated]
   );
