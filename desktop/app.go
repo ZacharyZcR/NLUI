@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ZacharyZcR/Kelper/bootstrap"
-	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/core/conversation"
-	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/engine"
-	"github.com/ZacharyZcR/Kelper/gateway"
-	"github.com/ZacharyZcR/Kelper/mcp"
+	"github.com/ZacharyZcR/NLUI/bootstrap"
+	"github.com/ZacharyZcR/NLUI/config"
+	"github.com/ZacharyZcR/NLUI/core/conversation"
+	"github.com/ZacharyZcR/NLUI/core/llm"
+	"github.com/ZacharyZcR/NLUI/engine"
+	"github.com/ZacharyZcR/NLUI/gateway"
+	"github.com/ZacharyZcR/NLUI/mcp"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"gopkg.in/yaml.v3"
 )
@@ -148,7 +148,7 @@ func (a *App) initialize() {
 	a.engine = eng
 	a.ready = true
 
-	fmt.Fprintf(os.Stderr, "Kelper ready: %d tools\n", len(allTools))
+	fmt.Fprintf(os.Stderr, "NLUI ready: %d tools\n", len(allTools))
 
 	// Notify frontend that tools have been updated
 	wailsRuntime.EventsEmit(a.ctx, "tools-updated", map[string]interface{}{

@@ -1,4 +1,4 @@
-"""Kelper 测试用 Demo API — 用户管理 + SQLite3 + Session Auth"""
+"""NLUI 测试用 Demo API — 用户管理 + SQLite3 + Session Auth"""
 
 import hashlib
 import secrets
@@ -65,7 +65,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Demo User API",
-    description="Kelper 测试用的用户管理 API",
+    description="NLUI 测试用的用户管理 API",
     version="1.0.0",
     lifespan=lifespan,
 )

@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/gateway"
-	"github.com/ZacharyZcR/Kelper/mcp"
+	"github.com/ZacharyZcR/NLUI/config"
+	"github.com/ZacharyZcR/NLUI/core/llm"
+	"github.com/ZacharyZcR/NLUI/gateway"
+	"github.com/ZacharyZcR/NLUI/mcp"
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
@@ -38,17 +38,17 @@ var promptTemplates = map[string]struct {
 	closing string
 }{
 	"zh": {
-		intro:   "你是 Kelper，一个智能AI助手。你可以通过工具与以下系统交互：\n\n",
+		intro:   "你是 NLUI，一个自然语言用户界面。你可以通过工具与以下系统交互：\n\n",
 		tools:   "可用工具：\n",
 		closing: "\n请根据用户需求使用合适的工具完成任务。如果不确定用户意图，先询问用户。\n\n你可以在回复中使用特殊代码块来展示结构化数据：\n- ```kelper:table 表格数据（JSON对象数组）\n- ```kelper:kv 键值对（JSON对象）\n- ```kelper:badges 标签列表（JSON基础类型数组）\n工具返回的结构化数据会自动识别渲染，这些标记仅在你想主动展示数据时使用。",
 	},
 	"en": {
-		intro:   "You are Kelper, an intelligent AI assistant. You can interact with the following systems through tools:\n\n",
+		intro:   "You are NLUI, a Natural Language User Interface. You can interact with the following systems through tools:\n\n",
 		tools:   "Available tools:\n",
 		closing: "\nUse the appropriate tools to help users accomplish their tasks. If unsure about the user's intent, ask for clarification.\n\nYou can use special code blocks in your replies to display structured data:\n- ```kelper:table for tabular data (JSON array of objects)\n- ```kelper:kv for key-value pairs (JSON object)\n- ```kelper:badges for label lists (JSON array of primitives)\nStructured data from tool results is auto-detected and rendered. Use these markers only when you want to proactively present data.",
 	},
 	"ja": {
-		intro:   "あなたは Kelper、インテリジェントなAIアシスタントです。以下のシステムとツールを通じてやり取りできます：\n\n",
+		intro:   "あなたは NLUI、自然言語ユーザーインターフェースです。以下のシステムとツールを通じてやり取りできます：\n\n",
 		tools:   "利用可能なツール：\n",
 		closing: "\nユーザーの要求に応じて適切なツールを使用してタスクを完了してください。ユーザーの意図が不明な場合は確認してください。\n\n返信内で特殊コードブロックを使用して構造化データを表示できます：\n- ```kelper:table テーブルデータ（JSONオブジェクト配列）\n- ```kelper:kv キーバリューペア（JSONオブジェクト）\n- ```kelper:badges ラベルリスト（JSONプリミティブ配列）\nツール結果の構造化データは自動検出・レンダリングされます。これらのマーカーはデータを能動的に表示したい場合にのみ使用してください。",
 	},

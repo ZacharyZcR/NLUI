@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ZacharyZcR/Kelper/core/llm"
+	"github.com/ZacharyZcR/NLUI/core/llm"
 )
 
 type Conversation struct {

@@ -1,4 +1,4 @@
-module github.com/ZacharyZcR/Kelper
+module github.com/ZacharyZcR/NLUI
 
 go 1.25.7
 

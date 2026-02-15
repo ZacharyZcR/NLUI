@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ZacharyZcR/Kelper/core/conversation"
-	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/core/toolloop"
+	"github.com/ZacharyZcR/NLUI/core/conversation"
+	"github.com/ZacharyZcR/NLUI/core/llm"
+	"github.com/ZacharyZcR/NLUI/core/toolloop"
 )
 
 // Type aliases — hosts only need to import engine.

@@ -5,16 +5,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/ZacharyZcR/Kelper/bootstrap"
-	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/core/llm"
-	"github.com/ZacharyZcR/Kelper/engine"
-	"github.com/ZacharyZcR/Kelper/mcp"
-	"github.com/ZacharyZcR/Kelper/server"
+	"github.com/ZacharyZcR/NLUI/bootstrap"
+	"github.com/ZacharyZcR/NLUI/config"
+	"github.com/ZacharyZcR/NLUI/core/llm"
+	"github.com/ZacharyZcR/NLUI/engine"
+	"github.com/ZacharyZcR/NLUI/mcp"
+	"github.com/ZacharyZcR/NLUI/server"
 )
 
 func main() {
-	fmt.Println("Kelper - AI Middleware")
+	fmt.Println("NLUI - Natural Language User Interface")
 	fmt.Println("=====================")
 
 	// Parse args: kelper [--mcp|--mcp-sse PORT] [config-path]

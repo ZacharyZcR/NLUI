@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ZacharyZcR/Kelper/gateway"
-	"github.com/ZacharyZcR/Kelper/mcp"
+	"github.com/ZacharyZcR/NLUI/gateway"
+	"github.com/ZacharyZcR/NLUI/mcp"
 )
 
 func main() {

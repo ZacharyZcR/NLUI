@@ -1,6 +1,6 @@
 package toolloop
 
-import "github.com/ZacharyZcR/Kelper/core/llm"
+import "github.com/ZacharyZcR/NLUI/core/llm"
 
 // estimateTokens gives a rough token count (~4 chars per token).
 func estimateTokens(msg *llm.Message) int {

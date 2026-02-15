@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ZacharyZcR/Kelper/config"
-	"github.com/ZacharyZcR/Kelper/engine"
+	"github.com/ZacharyZcR/NLUI/config"
+	"github.com/ZacharyZcR/NLUI/engine"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -55,7 +55,7 @@ func New(cfg *config.Config, eng *engine.Engine) *Server {
 
 func (s *Server) Run() error {
 	addr := fmt.Sprintf(":%d", s.cfg.Server.Port)
-	fmt.Printf("Kelper listening on %s\n", addr)
+	fmt.Printf("NLUI listening on %s\n", addr)
 	return s.router.Run(addr)
 }
 

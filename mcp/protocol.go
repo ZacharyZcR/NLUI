@@ -3,7 +3,7 @@ package mcp
 import (
 	"encoding/json"
 
-	"github.com/ZacharyZcR/Kelper/core/llm"
+	"github.com/ZacharyZcR/NLUI/core/llm"
 )
 
 // JSON-RPC 2.0

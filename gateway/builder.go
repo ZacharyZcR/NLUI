@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ZacharyZcR/Kelper/core/llm"
+	"github.com/ZacharyZcR/NLUI/core/llm"
 	"github.com/getkin/kin-openapi/openapi3"
 )
 

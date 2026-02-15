@@ -56,13 +56,13 @@ type ServerConfig struct {
 	Port int `yaml:"port"`
 }
 
-// GlobalDir returns %APPDATA%/Kelper (or equivalent), creating it if needed.
+// GlobalDir returns %APPDATA%/NLUI (or equivalent), creating it if needed.
 func GlobalDir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(base, "Kelper")
+	dir := filepath.Join(base, "NLUI")
 	return dir, os.MkdirAll(dir, 0755)
 }
 
