@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/ZacharyZcR/NLUI/config"
+	"github.com/ZacharyZcR/NLUI/core/conversation"
 	"github.com/ZacharyZcR/NLUI/engine"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
-	cfg    *config.Config
-	engine *engine.Engine
-	router *gin.Engine
+	cfg     *config.Config
+	engine  *engine.Engine
+	router  *gin.Engine
+	convMgr *conversation.Manager // Persist across reloads
 }
 
 type ChatRequest struct {
@@ -33,20 +35,54 @@ func New(cfg *config.Config, eng *engine.Engine) *Server {
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000"},
-		AllowMethods:     []string{"GET", "POST", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
 
 	api := r.Group("/api")
 	{
+		// Health & Info
 		api.GET("/health", s.health)
 		api.GET("/info", s.info)
+
+		// Chat
 		api.POST("/chat", s.chat)
+
+		// Conversations
 		api.GET("/conversations", s.listConversations)
 		api.POST("/conversations", s.createConversation)
 		api.GET("/conversations/:id", s.getConversation)
 		api.DELETE("/conversations/:id", s.deleteConversation)
+
+		// Phase 1: Targets Management
+		api.GET("/targets", s.listTargets)
+		api.POST("/targets", s.addTarget)
+		api.DELETE("/targets/:name", s.removeTarget)
+		api.POST("/targets/probe", s.probeTarget)
+
+		// Phase 2: Tools Management
+		api.GET("/tools", s.listTools)
+		api.GET("/tools/sources", s.listToolSources)
+		api.GET("/conversations/:id/tools", s.getConversationTools)
+		api.PUT("/conversations/:id/tools", s.updateConversationTools)
+
+		// Phase 3: Message Editing & Regeneration
+		api.PUT("/conversations/:id/messages/:index", s.editMessage)
+		api.POST("/conversations/:id/regenerate", s.regenerateFrom)
+		api.DELETE("/conversations/:id/messages/:index", s.deleteMessage)
+		api.DELETE("/conversations/:id/messages/:index/from", s.deleteMessagesFrom)
+
+		// Phase 4: LLM Configuration
+		api.GET("/config/llm", s.getLLMConfig)
+		api.PUT("/config/llm", s.updateLLMConfig)
+		api.GET("/config/llm/providers", s.probeLLMProviders)
+		api.POST("/config/llm/models", s.fetchModels)
+
+		// Phase 5: Proxy Configuration
+		api.GET("/config/proxy", s.getProxyConfig)
+		api.PUT("/config/proxy", s.updateProxyConfig)
+		api.POST("/config/proxy/test", s.testProxy)
 	}
 
 	s.router = r
