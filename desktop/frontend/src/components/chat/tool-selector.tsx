@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
-import { GetAvailableSources, GetToolConfig, UpdateToolConfig } from "../../../wailsjs/go/main/App";
+import { GetAvailableSources, GetToolConfig, UpdateToolConfig, CreateEmptyConversation } from "../../../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 
 interface ToolSelectorProps {
   conversationId: string | null;
+  onConversationCreated?: (id: string) => void;
 }
 
 interface SourceInfo {
@@ -27,7 +28,7 @@ interface ToolConfig {
   disabled_tools: string[];
 }
 
-export function ToolSelector({ conversationId }: ToolSelectorProps) {
+export function ToolSelector({ conversationId, onConversationCreated }: ToolSelectorProps) {
   const { t } = useI18n();
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [config, setConfig] = useState<ToolConfig>({ enabled_sources: [], disabled_tools: [] });
@@ -59,7 +60,17 @@ export function ToolSelector({ conversationId }: ToolSelectorProps) {
 
   const toggleSource = useCallback(
     async (sourceName: string) => {
-      if (!conversationId) return;
+      let activeConvId = conversationId;
+
+      // If no conversation exists, create one first
+      if (!activeConvId) {
+        activeConvId = await CreateEmptyConversation();
+        if (activeConvId && onConversationCreated) {
+          onConversationCreated(activeConvId);
+        }
+      }
+
+      if (!activeConvId) return;
 
       const currentEnabled = config.enabled_sources || [];
       let newEnabled: string[];
@@ -76,15 +87,25 @@ export function ToolSelector({ conversationId }: ToolSelectorProps) {
       }
 
       const newConfig = { ...config, enabled_sources: newEnabled };
-      await UpdateToolConfig(conversationId, newEnabled, config.disabled_tools || []);
+      await UpdateToolConfig(activeConvId, newEnabled, config.disabled_tools || []);
       setConfig(newConfig);
     },
-    [conversationId, config]
+    [conversationId, config, onConversationCreated]
   );
 
   const toggleTool = useCallback(
     async (toolName: string) => {
-      if (!conversationId) return;
+      let activeConvId = conversationId;
+
+      // If no conversation exists, create one first
+      if (!activeConvId) {
+        activeConvId = await CreateEmptyConversation();
+        if (activeConvId && onConversationCreated) {
+          onConversationCreated(activeConvId);
+        }
+      }
+
+      if (!activeConvId) return;
 
       const currentDisabled = config.disabled_tools || [];
       let newDisabled: string[];
@@ -96,10 +117,10 @@ export function ToolSelector({ conversationId }: ToolSelectorProps) {
       }
 
       const newConfig = { ...config, disabled_tools: newDisabled };
-      await UpdateToolConfig(conversationId, config.enabled_sources || [], newDisabled);
+      await UpdateToolConfig(activeConvId, config.enabled_sources || [], newDisabled);
       setConfig(newConfig);
     },
-    [conversationId, config]
+    [conversationId, config, onConversationCreated]
   );
 
   const toggleExpanded = (sourceName: string) => {

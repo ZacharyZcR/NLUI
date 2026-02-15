@@ -371,7 +371,7 @@ export function ChatMain({ conversationId, onConversationCreated }: ChatMainProp
                 {t("chat.stop")}
               </Button>
             )}
-            <ToolSelector conversationId={conversationId} />
+            <ToolSelector conversationId={conversationId} onConversationCreated={onConversationCreated} />
           </div>
           {usage && (
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 font-mono select-none">

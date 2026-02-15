@@ -599,6 +599,16 @@ func (a *App) DeleteConversation(id string) {
 	}
 }
 
+// CreateEmptyConversation creates a new conversation without any messages.
+// Returns the conversation ID.
+func (a *App) CreateEmptyConversation() string {
+	if !a.ready {
+		return ""
+	}
+	conv := a.engine.CreateConversation("")
+	return conv.ID
+}
+
 // ChatMessage is a frontend-friendly message format.
 type ChatMessage struct {
 	ID       string `json:"id"`
