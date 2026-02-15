@@ -35,6 +35,7 @@ export function useNLUI(config: NLUIConfig) {
 export interface UseChatOptions {
   conversationId?: string;
   onDone?: (conversationId: string) => void;
+  onEvent?: (event: ChatEvent) => void;
 }
 
 export interface UseChatReturn {
@@ -104,6 +105,8 @@ export function useChat(
                 return newMessages;
               });
             }
+            // 将完整事件传递给外部（如果需要）
+            options.onEvent?.(event);
           },
           onDone: (convId: string) => {
             setConversationId(convId);

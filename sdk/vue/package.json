@@ -32,6 +32,6 @@
     "vue": "^3.3.10"
   },
   "dependencies": {
-    "@nlui/client": "^1.0.0"
+    "@nlui/client": "workspace:*"
   }
 }

@@ -136,7 +136,11 @@ export class NLUIClient {
 
     if (!response.ok) {
       const error = new Error(`Chat failed: ${response.statusText}`);
-      options.onError?.(error) || this.onError?.(error);
+      if (options.onError) {
+        options.onError(error);
+      } else if (this.onError) {
+        this.onError(error);
+      }
       throw error;
     }
 
@@ -331,7 +335,11 @@ export class NLUIClient {
 
     if (!response.ok) {
       const error = new Error(`Edit message failed: ${response.statusText}`);
-      options.onError?.(error) || this.onError?.(error);
+      if (options.onError) {
+        options.onError(error);
+      } else if (this.onError) {
+        this.onError(error);
+      }
       throw error;
     }
 
@@ -356,7 +364,11 @@ export class NLUIClient {
 
     if (!response.ok) {
       const error = new Error(`Regenerate failed: ${response.statusText}`);
-      options.onError?.(error) || this.onError?.(error);
+      if (options.onError) {
+        options.onError(error);
+      } else if (this.onError) {
+        this.onError(error);
+      }
       throw error;
     }
 

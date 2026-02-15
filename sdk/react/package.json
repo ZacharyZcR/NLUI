@@ -2,14 +2,14 @@
   "name": "@nlui/react",
   "version": "0.1.0",
   "description": "NLUI React Hooks",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "main": "dist/use-nlui.js",
+  "module": "dist/use-nlui.mjs",
+  "types": "dist/use-nlui.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/use-nlui.mjs",
+      "require": "./dist/use-nlui.js",
+      "types": "./dist/use-nlui.d.ts"
     }
   },
   "scripts": {

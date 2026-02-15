@@ -8,3 +8,14 @@ desktop/desktop.exe
 **/__pycache__/
 *.syso
 desktop/build/
+
+# Node.js
+node_modules/
+*.log
+
+# Build outputs
+sdk/*/dist/
+sdk/*/node_modules/
+
+# TypeScript
+*.d.ts.map
