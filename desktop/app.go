@@ -71,6 +71,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) initialize() {
+	fmt.Fprintf(os.Stderr, "=== initialize() called ===\n")
 	a.ready = false
 
 	// Close previous MCP clients if reinitializing
@@ -90,11 +91,13 @@ func (a *App) initialize() {
 		return
 	}
 
+	fmt.Fprintf(os.Stderr, "Loading %d targets\n", len(cfg.Targets))
 	allTools, allEndpoints := bootstrap.DiscoverTools(cfg.Targets, func(name string, tools []llm.Tool) {
 		if data, err := json.Marshal(tools); err == nil {
 			config.SaveToolCache(name, data)
 		}
 	})
+	fmt.Fprintf(os.Stderr, "Discovered %d tools from targets\n", len(allTools))
 
 	mcpClients, mcpTools := bootstrap.InitMCPClients(cfg.MCP.Clients)
 	allTools = append(allTools, mcpTools...)
@@ -137,6 +140,11 @@ func (a *App) initialize() {
 	a.ready = true
 
 	fmt.Fprintf(os.Stderr, "Kelper ready: %d tools\n", len(allTools))
+
+	// Notify frontend that tools have been updated
+	wailsRuntime.EventsEmit(a.ctx, "tools-updated", map[string]interface{}{
+		"count": len(allTools),
+	})
 }
 
 // ProbeProviders auto-detects local LLM services and lists cloud presets.
@@ -906,7 +914,7 @@ type ToolConfig struct {
 }
 
 func (a *App) GetToolConfig(convID string) ToolConfig {
-	if !a.ready || convID == "" {
+	if a.engine == nil || convID == "" {
 		return ToolConfig{
 			EnabledSources: []string{},
 			DisabledTools:  []string{},
@@ -927,7 +935,7 @@ func (a *App) GetToolConfig(convID string) ToolConfig {
 
 // GetAvailableSources returns all available tool sources (MCP clients + API targets).
 func (a *App) GetAvailableSources() []SourceInfo {
-	if !a.ready {
+	if a.engine == nil {
 		return []SourceInfo{}
 	}
 
@@ -966,6 +974,7 @@ func (a *App) GetAvailableSources() []SourceInfo {
 	for _, src := range sourcesMap {
 		result = append(result, *src)
 	}
+	fmt.Fprintf(os.Stderr, "GetAvailableSources: %d sources, %d total tools\n", len(result), len(a.engine.Tools()))
 	return result
 }
 

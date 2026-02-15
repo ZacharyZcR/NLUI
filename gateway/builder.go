@@ -67,7 +67,15 @@ func BuildTools(doc *openapi3.T, targetName, baseURL string, auth AuthConfig) ([
 			if opID == "" {
 				opID = generateOpID(method, path)
 			}
-			toolName := sanitizeToolName(targetName + "__" + opID)
+
+			// Sanitize target name separately to avoid losing it entirely
+			sanitizedTarget := sanitizeToolName(targetName)
+			// If target name becomes all underscores (e.g., Chinese), use a fallback
+			if strings.Trim(sanitizedTarget, "_") == "" {
+				sanitizedTarget = "target"
+			}
+
+			toolName := sanitizeToolName(sanitizedTarget + "__" + opID)
 
 			description := op.Summary
 			if description == "" {

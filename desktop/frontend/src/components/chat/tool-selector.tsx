@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
 import { GetAvailableSources, GetToolConfig, UpdateToolConfig } from "../../../wailsjs/go/main/App";
+import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 
 interface ToolSelectorProps {
   conversationId: string | null;
@@ -45,6 +46,15 @@ export function ToolSelector({ conversationId }: ToolSelectorProps) {
 
   useEffect(() => {
     loadData();
+
+    // Listen for tools-updated event from backend
+    EventsOn("tools-updated", () => {
+      loadData();
+    });
+
+    return () => {
+      EventsOff("tools-updated");
+    };
   }, [loadData]);
 
   const toggleSource = useCallback(

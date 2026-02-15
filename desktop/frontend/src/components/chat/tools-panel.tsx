@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 
 import { useI18n } from "@/lib/i18n";
 import { ListTools, GetConfigDir } from "../../../wailsjs/go/main/App";
+import { EventsOn, EventsOff } from "../../../wailsjs/runtime/runtime";
 
 interface ToolInfo {
   target_name: string;
@@ -35,6 +36,15 @@ export function ToolsPanel({ onClose }: ToolsPanelProps) {
   useEffect(() => {
     refresh();
     GetConfigDir().then(setConfigDir).catch(() => {});
+
+    // Listen for tools-updated event from backend
+    EventsOn("tools-updated", () => {
+      refresh();
+    });
+
+    return () => {
+      EventsOff("tools-updated");
+    };
   }, [refresh]);
 
   const toggleExpand = (key: string) => {
