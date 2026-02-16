@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  # ─── Go: build & test ───
+  # ─── Go: build, test, coverage ───
   go:
     name: Go
     runs-on: ubuntu-latest
@@ -22,7 +22,10 @@ jobs:
         run: go build ./bootstrap ./cmd/... ./config ./core/... ./engine ./gateway ./mcp ./server ./service
 
       - name: Test
-        run: go test ./core/... ./engine/... ./gateway/... ./config/... ./service/...
+        run: go test -coverprofile=coverage.out ./core/... ./engine/... ./gateway/... ./config/... ./service/...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
 
   # ─── Go: lint ───
   lint:
@@ -39,3 +42,26 @@ jobs:
         with:
           version: v2.9
           args: ./bootstrap/... ./cmd/... ./config/... ./core/... ./engine/... ./gateway/... ./mcp/... ./server/... ./service/...
+
+  # ─── TypeScript SDK: test ───
+  sdk:
+    name: SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Test engine
+        run: pnpm --filter @nlui/engine test

@@ -9,14 +9,21 @@ desktop/desktop.exe
 *.syso
 desktop/build/
 
+# Build outputs
+build/
+dist/
+
 # Node.js
 node_modules/
 *.log
 
-# Build outputs
+# SDK build outputs
 sdk/*/dist/
 sdk/*/node_modules/
 
 # TypeScript
 *.d.ts
 *.d.ts.map
+
+# Test artifacts
+coverage.out
