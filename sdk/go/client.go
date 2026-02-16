@@ -62,9 +62,9 @@ type Conversation struct {
 }
 
 type Message struct {
-	Role      string      `json:"role"`
-	Content   string      `json:"content"`
-	ToolCalls []ToolCall  `json:"tool_calls,omitempty"`
+	Role      string     `json:"role"`
+	Content   string     `json:"content"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 }
 
 type ToolCall struct {

@@ -18,9 +18,9 @@ func main() {
 	app := &App{}
 
 	if err := wails.Run(&options.App{
-		Title:  "", // Dynamically set by frontend via SetWindowTitle
-		Width:  1100,
-		Height: 750,
+		Title:            "", // Dynamically set by frontend via SetWindowTitle
+		Width:            1100,
+		Height:           750,
 		MinWidth:         900,
 		MinHeight:        600,
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 255},

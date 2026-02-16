@@ -1,0 +1,15 @@
+# Go: check formatting
+BAD=$(gofmt -l . 2>/dev/null | grep -v vendor/ | grep -v desktop/frontend/ | head -5)
+if [ -n "$BAD" ]; then
+  echo "gofmt: these files need formatting:"
+  echo "$BAD"
+  echo "Run: gofmt -w ."
+  exit 1
+fi
+
+# Go: vet
+go vet ./... 2>&1
+if [ $? -ne 0 ]; then
+  echo "go vet failed"
+  exit 1
+fi

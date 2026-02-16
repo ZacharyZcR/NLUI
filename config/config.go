@@ -10,10 +10,10 @@ import (
 type Config struct {
 	Language string       `yaml:"language"`
 	Proxy    string       `yaml:"proxy"`
-	LLM     LLMConfig    `yaml:"llm"`
-	Targets []Target     `yaml:"targets"`
-	Server  ServerConfig `yaml:"server"`
-	MCP     MCPConfig    `yaml:"mcp"`
+	LLM      LLMConfig    `yaml:"llm"`
+	Targets  []Target     `yaml:"targets"`
+	Server   ServerConfig `yaml:"server"`
+	MCP      MCPConfig    `yaml:"mcp"`
 }
 
 type LLMConfig struct {
@@ -39,7 +39,7 @@ type AuthConfig struct {
 }
 
 type MCPConfig struct {
-	Server  MCPServerConfig  `yaml:"server"`
+	Server  MCPServerConfig   `yaml:"server"`
 	Clients []MCPClientConfig `yaml:"clients"`
 }
 

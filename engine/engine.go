@@ -24,7 +24,7 @@ type Config struct {
 	Tools        []Tool
 	SystemPrompt string
 	MaxCtxTokens int
-	ConvDir      string              // "" = in-memory only
+	ConvDir      string                // "" = in-memory only
 	ConvMgr      *conversation.Manager // optional, reuse across reinit
 }
 

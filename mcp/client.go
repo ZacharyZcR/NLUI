@@ -14,14 +14,14 @@ import (
 )
 
 type Client struct {
-	name   string
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	mu     sync.Mutex
-	nextID int64
+	name    string
+	cmd     *exec.Cmd
+	stdin   io.WriteCloser
+	mu      sync.Mutex
+	nextID  int64
 	pending sync.Map
-	tools  []MCPTool
-	done   chan struct{}
+	tools   []MCPTool
+	done    chan struct{}
 }
 
 func NewStdioClient(name, command string, args []string) (*Client, error) {
