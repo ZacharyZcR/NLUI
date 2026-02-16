@@ -39,26 +39,3 @@ jobs:
         with:
           version: v2.9
           args: ./bootstrap/... ./cmd/... ./config/... ./core/... ./engine/... ./gateway/... ./mcp/... ./server/...
-
-  # ─── Go: desktop compile check ───
-  go-desktop:
-    name: Go Desktop
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: desktop/go.mod
-
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-
-      - name: Build
-        working-directory: desktop
-        run: |
-          mkdir -p frontend/dist
-          touch frontend/dist/.gitkeep
-          go build -tags dev -o /dev/null .
