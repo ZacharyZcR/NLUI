@@ -10,6 +10,7 @@ import (
 	"github.com/ZacharyZcR/NLUI/config"
 	"github.com/ZacharyZcR/NLUI/core/conversation"
 	"github.com/ZacharyZcR/NLUI/engine"
+	"github.com/ZacharyZcR/NLUI/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +22,7 @@ type chatSession struct {
 
 type Server struct {
 	cfg        *config.Config
+	svc        *service.Service
 	engine     *engine.Engine
 	router     *gin.Engine
 	convMgr    *conversation.Manager // Persist across reloads
@@ -33,9 +35,10 @@ type ChatRequest struct {
 	Message        string `json:"message"`
 }
 
-func New(cfg *config.Config, eng *engine.Engine) *Server {
+func New(cfg *config.Config, eng *engine.Engine, configPath string) *Server {
 	s := &Server{
 		cfg:      cfg,
+		svc:      service.New(configPath),
 		engine:   eng,
 		sessions: make(map[string]*chatSession),
 	}

@@ -89,7 +89,7 @@ func main() {
 		}()
 	}
 
-	srv := server.New(cfg, eng)
+	srv := server.New(cfg, eng, cfgPath)
 	if err := srv.Run(); err != nil {
 		log.Fatalf("server: %v", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,9 +16,8 @@ import (
 	"github.com/ZacharyZcR/NLUI/core/conversation"
 	"github.com/ZacharyZcR/NLUI/core/llm"
 	"github.com/ZacharyZcR/NLUI/engine"
-	"github.com/ZacharyZcR/NLUI/gateway"
+	"github.com/ZacharyZcR/NLUI/service"
 	"github.com/gin-gonic/gin"
-	"gopkg.in/yaml.v3"
 )
 
 // ============= Phase 1: Targets Management =============
@@ -38,18 +38,11 @@ type ProbeTargetRequest struct {
 
 // listTargets returns all configured API targets
 func (s *Server) listTargets(c *gin.Context) {
-	targets := make([]map[string]interface{}, 0, len(s.cfg.Targets))
-
-	for _, t := range s.cfg.Targets {
-		targets = append(targets, map[string]interface{}{
-			"name":        t.Name,
-			"base_url":    t.BaseURL,
-			"spec":        t.Spec,
-			"auth_type":   t.Auth.Type,
-			"description": t.Description,
-		})
+	targets, err := s.svc.ListTargets()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
 	}
-
 	c.JSON(200, targets)
 }
 
@@ -61,37 +54,18 @@ func (s *Server) addTarget(c *gin.Context) {
 		return
 	}
 
-	if req.BaseURL == "" && req.Spec == "" && req.Tools == "" {
-		c.JSON(400, gin.H{"error": "either base_url, spec, or tools is required"})
-		return
-	}
-
-	// Check for duplicate name
-	for _, t := range s.cfg.Targets {
-		if t.Name == req.Name {
-			c.JSON(409, gin.H{"error": "target name already exists"})
-			return
+	if err := s.svc.AddTarget(req.Name, req.BaseURL, req.Spec, req.Tools, req.AuthType, req.AuthToken, req.Description); err != nil {
+		switch {
+		case errors.Is(err, service.ErrDuplicateTarget):
+			c.JSON(409, gin.H{"error": err.Error()})
+		case errors.Is(err, service.ErrInvalidTarget):
+			c.JSON(400, gin.H{"error": err.Error()})
+		default:
+			c.JSON(500, gin.H{"error": err.Error()})
 		}
-	}
-
-	// Add to config
-	newTarget := config.Target{
-		Name:        req.Name,
-		BaseURL:     req.BaseURL,
-		Spec:        req.Spec,
-		Tools:       req.Tools,
-		Auth:        config.AuthConfig{Type: req.AuthType, Token: req.AuthToken},
-		Description: req.Description,
-	}
-	s.cfg.Targets = append(s.cfg.Targets, newTarget)
-
-	// Save config
-	if err := s.saveConfig(); err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to save config: %v", err)})
 		return
 	}
 
-	// Reload engine
 	if err := s.reloadEngine(); err != nil {
 		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to reload: %v", err)})
 		return
@@ -108,36 +82,15 @@ func (s *Server) addTarget(c *gin.Context) {
 func (s *Server) removeTarget(c *gin.Context) {
 	name := c.Param("name")
 
-	// Find and remove
-	found := false
-	filtered := s.cfg.Targets[:0]
-	for _, t := range s.cfg.Targets {
-		if t.Name == name {
-			found = true
+	if err := s.svc.RemoveTarget(name); err != nil {
+		if errors.Is(err, service.ErrTargetNotFound) {
+			c.JSON(404, gin.H{"error": err.Error()})
 		} else {
-			filtered = append(filtered, t)
+			c.JSON(500, gin.H{"error": err.Error()})
 		}
-	}
-
-	if !found {
-		c.JSON(404, gin.H{"error": "target not found"})
 		return
 	}
 
-	s.cfg.Targets = filtered
-
-	// Save config
-	if err := s.saveConfig(); err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to save config: %v", err)})
-		return
-	}
-
-	// Remove toolset cache
-	if tsPath, err := config.ToolSetPath(name); err == nil {
-		os.Remove(tsPath)
-	}
-
-	// Reload engine
 	if err := s.reloadEngine(); err != nil {
 		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to reload: %v", err)})
 		return
@@ -157,27 +110,8 @@ func (s *Server) probeTarget(c *gin.Context) {
 		return
 	}
 
-	doc, specURL, err := gateway.DiscoverSpec(req.BaseURL)
-	if err != nil {
-		c.JSON(200, gin.H{
-			"found": false,
-			"error": err.Error(),
-		})
-		return
-	}
-
-	tools, _ := gateway.BuildTools(doc, "_probe", req.BaseURL, gateway.AuthConfig{})
-	endpoints := make([]string, 0, len(tools))
-	for _, t := range tools {
-		endpoints = append(endpoints, t.Function.Name+": "+t.Function.Description)
-	}
-
-	c.JSON(200, gin.H{
-		"found":     true,
-		"spec_url":  specURL,
-		"tools":     len(tools),
-		"endpoints": endpoints,
-	})
+	r := service.ProbeTarget(req.BaseURL)
+	c.JSON(200, r)
 }
 
 // ============= Phase 2: Tools Management =============
@@ -415,10 +349,15 @@ type FetchModelsRequest struct {
 
 // getLLMConfig returns current LLM configuration
 func (s *Server) getLLMConfig(c *gin.Context) {
+	cfg, err := s.svc.LoadConfig()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(200, gin.H{
-		"api_base": s.cfg.LLM.APIBase,
-		"api_key":  maskAPIKey(s.cfg.LLM.APIKey),
-		"model":    s.cfg.LLM.Model,
+		"api_base": cfg.LLM.APIBase,
+		"api_key":  service.MaskKey(cfg.LLM.APIKey),
+		"model":    cfg.LLM.Model,
 	})
 }
 
@@ -430,12 +369,8 @@ func (s *Server) updateLLMConfig(c *gin.Context) {
 		return
 	}
 
-	s.cfg.LLM.APIBase = req.APIBase
-	s.cfg.LLM.APIKey = req.APIKey
-	s.cfg.LLM.Model = req.Model
-
-	if err := s.saveConfig(); err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to save config: %v", err)})
+	if err := s.svc.SaveLLMConfig(req.APIBase, req.APIKey, req.Model); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -447,19 +382,9 @@ func (s *Server) updateLLMConfig(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "LLM configuration updated"})
 }
 
-// probeLLMProviders auto-detects local LLM services
+// probeLLMProviders lists cloud LLM provider presets
 func (s *Server) probeLLMProviders(c *gin.Context) {
-	// Similar to desktop app.go ProbeProviders()
-	providers := []map[string]interface{}{
-		{"name": "OpenAI", "api_base": "https://api.openai.com/v1"},
-		{"name": "Gemini", "api_base": "https://generativelanguage.googleapis.com/v1beta/openai"},
-		{"name": "DeepSeek", "api_base": "https://api.deepseek.com/v1"},
-		{"name": "Claude", "api_base": "https://api.anthropic.com/v1"},
-	}
-
-	// TODO: Auto-detect local services (Ollama, LM Studio)
-
-	c.JSON(200, providers)
+	c.JSON(200, service.ProviderPresets())
 }
 
 // fetchModels queries /v1/models for any OpenAI-compatible endpoint
@@ -487,7 +412,12 @@ type ProxyTestRequest struct {
 
 // getProxyConfig returns current proxy configuration
 func (s *Server) getProxyConfig(c *gin.Context) {
-	c.JSON(200, gin.H{"proxy": s.cfg.Proxy})
+	cfg, err := s.svc.LoadConfig()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"proxy": cfg.Proxy})
 }
 
 // updateProxyConfig updates proxy configuration
@@ -498,10 +428,8 @@ func (s *Server) updateProxyConfig(c *gin.Context) {
 		return
 	}
 
-	s.cfg.Proxy = req.Proxy
-
-	if err := s.saveConfig(); err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to save config: %v", err)})
+	if err := s.svc.SaveProxy(req.Proxy); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -527,40 +455,25 @@ var (
 	reloadMu sync.Mutex
 )
 
-// saveConfig saves the current configuration to file
-func (s *Server) saveConfig() error {
-	reloadMu.Lock()
-	defer reloadMu.Unlock()
-
-	cfgPath, err := config.GlobalConfigPath()
-	if err != nil {
-		return err
-	}
-
-	data, err := yaml.Marshal(s.cfg)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(cfgPath, data, 0600)
-}
-
-// reloadEngine reinitializes the engine with updated configuration
+// reloadEngine reloads config from file and reinitializes the engine.
 func (s *Server) reloadEngine() error {
 	reloadMu.Lock()
 	defer reloadMu.Unlock()
 
-	// Run bootstrap with new config
+	cfg, err := s.svc.LoadConfig()
+	if err != nil {
+		return err
+	}
+	s.cfg = cfg
+
 	res, err := bootstrap.Run(s.cfg, nil)
 	if err != nil {
 		return err
 	}
 	defer res.Close()
 
-	// Create new engine (reuse conversation manager)
 	llmClient := llm.NewClient(s.cfg.LLM.APIBase, s.cfg.LLM.APIKey, s.cfg.LLM.Model, s.cfg.Proxy)
 
-	// Initialize conversation manager if not exists
 	if s.convMgr == nil {
 		convDir := ""
 		if dir, err := config.GlobalDir(); err == nil {
@@ -569,16 +482,14 @@ func (s *Server) reloadEngine() error {
 		s.convMgr = conversation.NewManager(convDir)
 	}
 
-	newEngine := engine.New(engine.Config{
+	s.engine = engine.New(engine.Config{
 		LLM:          llmClient,
 		Executor:     res.Router,
 		Tools:        res.Tools,
 		SystemPrompt: res.SystemPrompt,
 		MaxCtxTokens: s.cfg.LLM.MaxCtxTokens,
-		ConvMgr:      s.convMgr, // Reuse conversation manager
+		ConvMgr:      s.convMgr,
 	})
-
-	s.engine = newEngine
 	return nil
 }
 
@@ -606,13 +517,6 @@ func extractAuthToken(c *gin.Context) string {
 		return h[7:]
 	}
 	return ""
-}
-
-func maskAPIKey(key string) string {
-	if len(key) <= 8 {
-		return key
-	}
-	return key[:4] + "..." + key[len(key)-4:]
 }
 
 // ============= Chat Session Control =============
@@ -685,7 +589,6 @@ func (s *Server) uploadSpec(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Save to configDir/specs/
 	specsDir := ""
 	if dir, err := config.GlobalDir(); err == nil {
 		specsDir = filepath.Join(dir, "specs")
@@ -705,24 +608,18 @@ func (s *Server) uploadSpec(c *gin.Context) {
 	io.Copy(out, file)
 	out.Close()
 
-	doc, err := gateway.LoadSpec(savedPath)
-	if err != nil {
+	r := service.ValidateSpec(savedPath)
+	if !r.Found {
 		os.Remove(savedPath)
-		c.JSON(400, gin.H{"found": false, "error": err.Error()})
+		c.JSON(400, gin.H{"found": false, "error": r.Error})
 		return
-	}
-
-	tools, _ := gateway.BuildTools(doc, "_upload", "", gateway.AuthConfig{})
-	endpoints := make([]string, 0, len(tools))
-	for _, t := range tools {
-		endpoints = append(endpoints, t.Function.Name+": "+t.Function.Description)
 	}
 
 	c.JSON(200, gin.H{
 		"found":     true,
 		"spec_path": savedPath,
-		"tools":     len(tools),
-		"endpoints": endpoints,
+		"tools":     r.ToolCount,
+		"endpoints": r.Endpoints,
 	})
 }
 
@@ -735,7 +632,6 @@ func (s *Server) uploadToolSet(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Save to configDir/toolsets/
 	toolsetsDir := ""
 	if dir, err := config.GlobalDir(); err == nil {
 		toolsetsDir = filepath.Join(dir, "toolsets")
@@ -755,22 +651,17 @@ func (s *Server) uploadToolSet(c *gin.Context) {
 	io.Copy(out, file)
 	out.Close()
 
-	ts, err := gateway.LoadToolSet(savedPath)
-	if err != nil {
+	r := service.ValidateToolSet(savedPath)
+	if !r.Found {
 		os.Remove(savedPath)
-		c.JSON(400, gin.H{"found": false, "error": err.Error()})
+		c.JSON(400, gin.H{"found": false, "error": r.Error})
 		return
-	}
-
-	endpoints := make([]string, 0, len(ts.Endpoints))
-	for _, ep := range ts.Endpoints {
-		endpoints = append(endpoints, ep.Name+": "+ep.Description)
 	}
 
 	c.JSON(200, gin.H{
 		"found":      true,
 		"tools_path": savedPath,
-		"tools":      len(ts.Endpoints),
-		"endpoints":  endpoints,
+		"tools":      r.ToolCount,
+		"endpoints":  r.Endpoints,
 	})
 }

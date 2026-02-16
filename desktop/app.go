@@ -19,12 +19,13 @@ import (
 	"github.com/ZacharyZcR/NLUI/engine"
 	"github.com/ZacharyZcR/NLUI/gateway"
 	"github.com/ZacharyZcR/NLUI/mcp"
+	"github.com/ZacharyZcR/NLUI/service"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
-	"gopkg.in/yaml.v3"
 )
 
 type App struct {
 	ctx              context.Context
+	svc              *service.Service
 	engine           *engine.Engine
 	convMgr          *conversation.Manager // survives reinit
 	language         string
@@ -66,6 +67,8 @@ func (a *App) startup(ctx context.Context) {
 			}
 		}
 	}
+
+	a.svc = service.New(globalPath)
 
 	// Async: don't block Wails UI thread — frontend checks ready state
 	go a.initialize()
@@ -147,12 +150,11 @@ func (a *App) initialize() {
 
 // ProbeProviders auto-detects local LLM services and lists cloud presets.
 func (a *App) ProbeProviders() []ProviderInfo {
-	// Cloud presets — models fetched via FetchModels after user provides API key
-	result := []ProviderInfo{
-		{Name: "OpenAI", APIBase: "https://api.openai.com/v1", Models: []string{}},
-		{Name: "Gemini", APIBase: "https://generativelanguage.googleapis.com/v1beta/openai", Models: []string{}},
-		{Name: "DeepSeek", APIBase: "https://api.deepseek.com/v1", Models: []string{}},
-		{Name: "Claude", APIBase: "https://api.anthropic.com/v1", Models: []string{}},
+	// Cloud presets from service
+	presets := service.ProviderPresets()
+	result := make([]ProviderInfo, len(presets))
+	for i, p := range presets {
+		result[i] = ProviderInfo{Name: p.Name, APIBase: p.APIBase, Models: p.Models}
 	}
 
 	// Auto-detect local services
@@ -169,7 +171,6 @@ func (a *App) ProbeProviders() []ProviderInfo {
 	for _, t := range locals {
 		models := fetchModels(client, t.apiBase+"/models")
 		if len(models) > 0 {
-			// Local services go first
 			result = append([]ProviderInfo{{
 				Name:    t.name,
 				APIBase: t.apiBase,
@@ -243,37 +244,16 @@ func parseModelsResponse(resp *http.Response) []string {
 
 // SaveLLMConfig writes LLM settings to kelper.yaml and reinitializes.
 func (a *App) SaveLLMConfig(apiBase, apiKey, model string) string {
-	cfg := &config.Config{}
-	if existing, err := config.Load(a.configPath()); err == nil {
-		cfg = existing
-	}
-
-	cfg.LLM.APIBase = apiBase
-	cfg.LLM.APIKey = apiKey
-	cfg.LLM.Model = model
-
-	if cfg.Language == "" {
-		cfg.Language = "en"
-	}
-	if cfg.Server.Port == 0 {
-		cfg.Server.Port = 9000
-	}
-
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
+	if err := a.svc.SaveLLMConfig(apiBase, apiKey, model); err != nil {
 		return err.Error()
 	}
-	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
-		return err.Error()
-	}
-
 	a.initialize()
 	return ""
 }
 
 // GetCurrentConfig returns the current LLM configuration.
 func (a *App) GetCurrentConfig() map[string]interface{} {
-	cfg, err := config.Load(a.configPath())
+	cfg, err := a.svc.LoadConfig()
 	if err != nil {
 		return map[string]interface{}{"exists": false}
 	}
@@ -316,16 +296,7 @@ func (a *App) TestProxy(proxy string) string {
 
 // SaveProxy writes the proxy setting to kelper.yaml (no reinit needed).
 func (a *App) SaveProxy(proxy string) string {
-	cfg := &config.Config{}
-	if existing, err := config.Load(a.configPath()); err == nil {
-		cfg = existing
-	}
-	cfg.Proxy = proxy
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return err.Error()
-	}
-	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
+	if err := a.svc.SaveProxy(proxy); err != nil {
 		return err.Error()
 	}
 	return ""
@@ -343,23 +314,15 @@ func (a *App) UploadSpec() map[string]interface{} {
 		return map[string]interface{}{"found": false, "error": "no file selected"}
 	}
 
-	doc, err := gateway.LoadSpec(path)
-	if err != nil {
-		return map[string]interface{}{"found": false, "error": err.Error()}
+	r := service.ValidateSpec(path)
+	if !r.Found {
+		return map[string]interface{}{"found": false, "error": r.Error}
 	}
-
-	auth := gateway.AuthConfig{}
-	tools, _ := gateway.BuildTools(doc, "_upload", "", auth)
-	endpoints := make([]string, 0, len(tools))
-	for _, t := range tools {
-		endpoints = append(endpoints, t.Function.Name+": "+t.Function.Description)
-	}
-
 	return map[string]interface{}{
 		"found":     true,
-		"spec_url":  path,
-		"tools":     len(tools),
-		"endpoints": endpoints,
+		"spec_url":  r.SpecURL,
+		"tools":     r.ToolCount,
+		"endpoints": r.Endpoints,
 	}
 }
 
@@ -375,181 +338,69 @@ func (a *App) UploadToolSet() map[string]interface{} {
 		return map[string]interface{}{"found": false, "error": "no file selected"}
 	}
 
-	ts, err := gateway.LoadToolSet(path)
-	if err != nil {
-		return map[string]interface{}{"found": false, "error": err.Error()}
+	r := service.ValidateToolSet(path)
+	if !r.Found {
+		return map[string]interface{}{"found": false, "error": r.Error}
 	}
-
-	endpoints := make([]string, 0, len(ts.Endpoints))
-	for _, ep := range ts.Endpoints {
-		endpoints = append(endpoints, ep.Name+": "+ep.Description)
-	}
-
 	return map[string]interface{}{
 		"found":      true,
-		"tools_path": path,
-		"tools":      len(ts.Endpoints),
-		"endpoints":  endpoints,
+		"tools_path": r.ToolsPath,
+		"tools":      r.ToolCount,
+		"endpoints":  r.Endpoints,
 	}
 }
 
 // ProbeTarget tries to discover an OpenAPI spec from a base URL.
 func (a *App) ProbeTarget(baseURL string) map[string]interface{} {
-	doc, specURL, err := gateway.DiscoverSpec(baseURL)
-	if err != nil {
-		return map[string]interface{}{
-			"found": false,
-			"error": err.Error(),
-		}
+	r := service.ProbeTarget(baseURL)
+	if !r.Found {
+		return map[string]interface{}{"found": false, "error": r.Error}
 	}
-
-	auth := gateway.AuthConfig{}
-	tools, _ := gateway.BuildTools(doc, "_probe", baseURL, auth)
-	endpoints := make([]string, 0, len(tools))
-	for _, t := range tools {
-		endpoints = append(endpoints, t.Function.Name+": "+t.Function.Description)
-	}
-
 	return map[string]interface{}{
 		"found":     true,
-		"spec_url":  specURL,
-		"tools":     len(tools),
-		"endpoints": endpoints,
+		"spec_url":  r.SpecURL,
+		"tools":     r.ToolCount,
+		"endpoints": r.Endpoints,
 	}
 }
 
 // ListTargets returns the configured API targets with tool counts.
 func (a *App) ListTargets() []map[string]interface{} {
-	cfg, err := config.Load(a.configPath())
+	targets, err := a.svc.ListTargets()
 	if err != nil {
 		return []map[string]interface{}{}
 	}
 
-	result := make([]map[string]interface{}, 0)
-	for _, tgt := range cfg.Targets {
-		toolCount := 0
-		source := tgt.Spec // what to show in "spec" field
-
-		// Try cached/explicit toolset first (fast path, no parsing)
-		if ts := loadTargetToolSet(tgt); ts != nil {
-			toolCount = len(ts.Endpoints)
-			if source == "" {
-				source = tgt.Tools
-			}
-		}
-
+	result := make([]map[string]interface{}, 0, len(targets))
+	for _, t := range targets {
 		result = append(result, map[string]interface{}{
-			"name":        tgt.Name,
-			"base_url":    tgt.BaseURL,
-			"spec":        source,
-			"auth_type":   tgt.Auth.Type,
-			"description": tgt.Description,
-			"tools":       toolCount,
+			"name":        t.Name,
+			"base_url":    t.BaseURL,
+			"spec":        t.Spec,
+			"auth_type":   t.AuthType,
+			"description": t.Description,
+			"tools":       t.ToolCount,
 		})
 	}
 	return result
 }
 
-// loadTargetToolSet tries to load toolset from explicit path or cache.
-func loadTargetToolSet(tgt config.Target) *gateway.ToolSet {
-	// 1. Explicit toolset file
-	if tgt.Tools != "" {
-		ts, err := gateway.LoadToolSet(tgt.Tools)
-		if err == nil {
-			return ts
-		}
-	}
-	// 2. Cached toolset from previous bootstrap
-	if tsPath, err := config.ToolSetPath(tgt.Name); err == nil {
-		ts, err := gateway.LoadToolSet(tsPath)
-		if err == nil {
-			return ts
-		}
-	}
-	return nil
-}
-
 // AddTarget adds a new API target to the config and reinitializes.
 func (a *App) AddTarget(name, baseURL, spec, tools, authType, authToken, description string) string {
-	if name == "" || (baseURL == "" && spec == "" && tools == "") {
-		return "name and (base_url, spec, or tools) are required"
-	}
-
-	cfg := &config.Config{}
-	if existing, err := config.Load(a.configPath()); err == nil {
-		cfg = existing
-	}
-
-	// Check for duplicate name
-	for _, t := range cfg.Targets {
-		if t.Name == name {
-			return "target name already exists"
-		}
-	}
-
-	cfg.Targets = append(cfg.Targets, config.Target{
-		Name:        name,
-		BaseURL:     baseURL,
-		Spec:        spec,
-		Tools:       tools,
-		Auth:        config.AuthConfig{Type: authType, Token: authToken},
-		Description: description,
-	})
-
-	if cfg.Language == "" {
-		cfg.Language = "en"
-	}
-	if cfg.Server.Port == 0 {
-		cfg.Server.Port = 9000
-	}
-
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
+	if err := a.svc.AddTarget(name, baseURL, spec, tools, authType, authToken, description); err != nil {
 		return err.Error()
 	}
-	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
-		return err.Error()
-	}
-
 	a.initialize()
 	return ""
 }
 
 // RemoveTarget removes an API target by name and reinitializes.
 func (a *App) RemoveTarget(name string) string {
-	cfg, err := config.Load(a.configPath())
-	if err != nil {
+	if err := a.svc.RemoveTarget(name); err != nil {
 		return err.Error()
-	}
-
-	filtered := cfg.Targets[:0]
-	for _, t := range cfg.Targets {
-		if t.Name != name {
-			filtered = append(filtered, t)
-		}
-	}
-	cfg.Targets = filtered
-
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return err.Error()
-	}
-	if err := os.WriteFile(a.configPath(), data, 0600); err != nil {
-		return err.Error()
-	}
-
-	if tsPath, err := config.ToolSetPath(name); err == nil {
-		os.Remove(tsPath)
 	}
 	a.initialize()
 	return ""
-}
-
-func maskKey(key string) string {
-	if len(key) <= 8 {
-		return key
-	}
-	return key[:4] + "..." + key[len(key)-4:]
 }
 
 func (a *App) Chat(message, conversationID string) string {
