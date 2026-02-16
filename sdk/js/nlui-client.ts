@@ -27,6 +27,8 @@ export interface Conversation {
 export interface ChatOptions {
   conversationId?: string;
   onEvent?: (event: ChatEvent) => void;
+  onSession?: (sessionId: string) => void;
+  onToolConfirm?: (sessionId: string, toolName: string, args: string) => void;
   onDone?: (conversationId: string) => void;
   onError?: (error: Error) => void;
   signal?: AbortSignal;
@@ -37,9 +39,19 @@ export type ChatEventType =
   | "content"
   | "tool_call"
   | "tool_result"
+  | "tool_confirm"
+  | "session"
   | "usage"
   | "error"
   | "done";
+
+export interface UploadSpecResult {
+  found: boolean;
+  spec_path?: string;
+  tools?: number;
+  endpoints?: string[];
+  error?: string;
+}
 
 export interface ChatEvent {
   type: ChatEventType;
@@ -492,6 +504,46 @@ export class NLUIClient {
     return response.json();
   }
 
+  // ============= Chat Session Control =============
+
+  /**
+   * 停止正在进行的 chat 会话
+   */
+  async stopChat(sessionId: string): Promise<void> {
+    const response = await fetch(`${this.baseURL}/api/chat/stop`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    if (!response.ok) throw new Error(`Stop chat failed: ${response.statusText}`);
+  }
+
+  /**
+   * 确认或拒绝危险工具调用
+   */
+  async confirmTool(sessionId: string, approved: boolean): Promise<void> {
+    const response = await fetch(`${this.baseURL}/api/chat/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, approved }),
+    });
+    if (!response.ok) throw new Error(`Confirm tool failed: ${response.statusText}`);
+  }
+
+  /**
+   * 上传 OpenAPI spec 文件
+   */
+  async uploadSpec(file: File): Promise<UploadSpecResult> {
+    const formData = new FormData();
+    formData.append("spec", file);
+    const response = await fetch(`${this.baseURL}/api/specs/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) throw new Error(`Upload spec failed: ${response.statusText}`);
+    return response.json();
+  }
+
   // ============= Private Helper Methods =============
 
   /**
@@ -503,6 +555,7 @@ export class NLUIClient {
 
     const decoder = new TextDecoder();
     let buffer = "";
+    let currentEvent = "";
 
     try {
       while (true) {
@@ -514,32 +567,51 @@ export class NLUIClient {
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (!line.trim()) continue;
-
           if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
             continue;
           }
 
           if (line.startsWith("data: ")) {
             const data = line.slice(6).trim();
+            const eventType = currentEvent || "";
+            currentEvent = ""; // reset after consuming
+
             try {
               const parsed = JSON.parse(data);
 
-              // 特殊处理 done 事件
-              if (parsed.conversation_id) {
+              // Handle session event
+              if (eventType === "session") {
+                options.onSession?.(parsed.session_id);
+                continue;
+              }
+
+              // Handle tool_confirm event
+              if (eventType === "tool_confirm") {
+                options.onToolConfirm?.(parsed.session_id, parsed.name, parsed.arguments);
+                continue;
+              }
+
+              // Handle done event
+              if (eventType === "done" && parsed.conversation_id) {
                 options.onDone?.(parsed.conversation_id);
                 continue;
               }
 
-              // 其他事件
+              // All other events
               const event: ChatEvent = {
-                type: this.inferEventType(parsed),
+                type: (eventType || this.inferEventType(parsed)) as ChatEventType,
                 data: parsed,
               };
               options.onEvent?.(event);
             } catch (e) {
               console.warn("Failed to parse SSE data:", data);
             }
+          }
+
+          // Empty line resets current event
+          if (!line.trim()) {
+            currentEvent = "";
           }
         }
       }

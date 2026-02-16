@@ -86,7 +86,12 @@ func isDangerous(toolName, argsJSON string) bool {
 	return false
 }
 
-func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool, authToken string, onEvent func(Event)) ([]llm.Message, error) {
+func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool, authToken string, confirm ConfirmFunc, onEvent func(Event)) ([]llm.Message, error) {
+	// Prefer caller-supplied confirm; fall back to instance-level.
+	if confirm == nil {
+		confirm = l.confirm
+	}
+
 	var totalUsage UsageEvent
 
 	for i := 0; i < MaxIterations; i++ {
@@ -119,8 +124,8 @@ func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool
 			}})
 
 			// Confirmation gate for dangerous operations
-			if l.confirm != nil && isDangerous(tc.Function.Name, tc.Function.Arguments) {
-				if !l.confirm(tc.Function.Name, tc.Function.Arguments) {
+			if confirm != nil && isDangerous(tc.Function.Name, tc.Function.Arguments) {
+				if !confirm(tc.Function.Name, tc.Function.Arguments) {
 					result := "Operation cancelled by user"
 					onEvent(Event{Type: "tool_result", Data: ToolResultEvent{
 						Name:   tc.Function.Name,

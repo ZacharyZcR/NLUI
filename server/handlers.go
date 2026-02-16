@@ -1,8 +1,11 @@
 package server
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -302,7 +305,7 @@ func (s *Server) editMessage(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	err := s.engine.EditMessageAndRegenerate(c.Request.Context(), convID, msgIndex, req.Content, authToken, func(event engine.Event) {
+	err := s.engine.EditMessageAndRegenerate(c.Request.Context(), convID, msgIndex, req.Content, authToken, nil, func(event engine.Event) {
 		if data, err := json.Marshal(event.Data); err == nil {
 			fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, string(data))
 			c.Writer.Flush()
@@ -339,7 +342,7 @@ func (s *Server) regenerateFrom(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	err := s.engine.RegenerateFrom(c.Request.Context(), convID, req.FromIndex, authToken, func(event engine.Event) {
+	err := s.engine.RegenerateFrom(c.Request.Context(), convID, req.FromIndex, authToken, nil, func(event engine.Event) {
 		if data, err := json.Marshal(event.Data); err == nil {
 			fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, string(data))
 			c.Writer.Flush()
@@ -606,4 +609,115 @@ func maskAPIKey(key string) string {
 		return key
 	}
 	return key[:4] + "..." + key[len(key)-4:]
+}
+
+// ============= Chat Session Control =============
+
+func generateSessionID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// stopChat cancels an active chat session.
+func (s *Server) stopChat(c *gin.Context) {
+	var req struct {
+		SessionID string `json:"session_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	s.sessionsMu.Lock()
+	session, ok := s.sessions[req.SessionID]
+	s.sessionsMu.Unlock()
+
+	if !ok {
+		c.JSON(404, gin.H{"error": "session not found"})
+		return
+	}
+
+	session.cancel()
+	c.JSON(200, gin.H{"message": "chat stopped"})
+}
+
+// confirmTool approves or rejects a dangerous tool call.
+func (s *Server) confirmTool(c *gin.Context) {
+	var req struct {
+		SessionID string `json:"session_id" binding:"required"`
+		Approved  bool   `json:"approved"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	s.sessionsMu.Lock()
+	session, ok := s.sessions[req.SessionID]
+	s.sessionsMu.Unlock()
+
+	if !ok {
+		c.JSON(404, gin.H{"error": "session not found"})
+		return
+	}
+
+	select {
+	case session.confirmCh <- req.Approved:
+		c.JSON(200, gin.H{"message": "confirmation sent"})
+	default:
+		c.JSON(409, gin.H{"error": "no pending confirmation"})
+	}
+}
+
+// ============= Spec Upload =============
+
+// uploadSpec accepts a multipart file upload and parses it as an OpenAPI spec.
+func (s *Server) uploadSpec(c *gin.Context) {
+	file, header, err := c.Request.FormFile("spec")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "spec file is required"})
+		return
+	}
+	defer file.Close()
+
+	// Save to configDir/specs/
+	specsDir := ""
+	if dir, err := config.GlobalDir(); err == nil {
+		specsDir = filepath.Join(dir, "specs")
+		os.MkdirAll(specsDir, 0755)
+	}
+	if specsDir == "" {
+		c.JSON(500, gin.H{"error": "cannot determine config directory"})
+		return
+	}
+
+	savedPath := filepath.Join(specsDir, header.Filename)
+	out, err := os.Create(savedPath)
+	if err != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to save file: %v", err)})
+		return
+	}
+	io.Copy(out, file)
+	out.Close()
+
+	doc, err := gateway.LoadSpec(savedPath)
+	if err != nil {
+		os.Remove(savedPath)
+		c.JSON(400, gin.H{"found": false, "error": err.Error()})
+		return
+	}
+
+	tools, _ := gateway.BuildTools(doc, "_upload", "", gateway.AuthConfig{})
+	endpoints := make([]string, 0, len(tools))
+	for _, t := range tools {
+		endpoints = append(endpoints, t.Function.Name+": "+t.Function.Description)
+	}
+
+	c.JSON(200, gin.H{
+		"found":     true,
+		"spec_path": savedPath,
+		"tools":     len(tools),
+		"endpoints": endpoints,
+	})
 }

@@ -54,7 +54,7 @@ func New(cfg Config) *Engine {
 
 // Chat runs a full chat turn: get/create conversation → append user msg → loop → update messages.
 // Returns the conversation ID used.
-func (e *Engine) Chat(ctx context.Context, convID, message, authToken string, onEvent func(Event)) (string, error) {
+func (e *Engine) Chat(ctx context.Context, convID, message, authToken string, confirm ConfirmFunc, onEvent func(Event)) (string, error) {
 	conv := e.convMgr.Get(convID)
 	isNew := conv == nil
 	if isNew {
@@ -74,7 +74,7 @@ func (e *Engine) Chat(ctx context.Context, convID, message, authToken string, on
 	// Filter tools based on conversation config
 	enabledTools := e.filterTools(conv)
 
-	finalMessages, err := e.loop.Run(ctx, conv.Messages, enabledTools, authToken, onEvent)
+	finalMessages, err := e.loop.Run(ctx, conv.Messages, enabledTools, authToken, confirm, onEvent)
 	if err != nil {
 		e.convMgr.UpdateMessages(conv.ID, finalMessages)
 		return conv.ID, fmt.Errorf("chat: %w", err)
@@ -117,7 +117,7 @@ func (e *Engine) DeleteConversation(id string) {
 }
 
 // EditMessageAndRegenerate edits a message and regenerates from that point.
-func (e *Engine) EditMessageAndRegenerate(ctx context.Context, convID string, msgIndex int, newContent, authToken string, onEvent func(Event)) error {
+func (e *Engine) EditMessageAndRegenerate(ctx context.Context, convID string, msgIndex int, newContent, authToken string, confirm ConfirmFunc, onEvent func(Event)) error {
 	if err := e.convMgr.EditMessage(convID, msgIndex, newContent); err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (e *Engine) EditMessageAndRegenerate(ctx context.Context, convID string, ms
 		return fmt.Errorf("conversation not found")
 	}
 	enabledTools := e.filterTools(conv)
-	finalMessages, err := e.loop.Run(ctx, conv.Messages, enabledTools, authToken, onEvent)
+	finalMessages, err := e.loop.Run(ctx, conv.Messages, enabledTools, authToken, confirm, onEvent)
 	e.convMgr.UpdateMessages(convID, finalMessages)
 	return err
 }
@@ -148,7 +148,7 @@ func (e *Engine) UpdateToolConfig(convID string, enabledSources, disabledTools [
 
 // RegenerateFrom regenerates the conversation from a specific message index.
 // Useful for retrying after the last assistant message.
-func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex int, authToken string, onEvent func(Event)) error {
+func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex int, authToken string, confirm ConfirmFunc, onEvent func(Event)) error {
 	conv := e.convMgr.Get(convID)
 	if conv == nil {
 		return fmt.Errorf("conversation not found")
@@ -158,7 +158,7 @@ func (e *Engine) RegenerateFrom(ctx context.Context, convID string, fromIndex in
 	}
 	truncated := conv.Messages[:fromIndex]
 	enabledTools := e.filterTools(conv)
-	finalMessages, err := e.loop.Run(ctx, truncated, enabledTools, authToken, onEvent)
+	finalMessages, err := e.loop.Run(ctx, truncated, enabledTools, authToken, confirm, onEvent)
 	e.convMgr.UpdateMessages(convID, finalMessages)
 	return err
 }

@@ -138,13 +138,6 @@ func (a *App) initialize() {
 		MaxCtxTokens: cfg.LLM.MaxCtxTokens,
 		ConvMgr:      a.convMgr,
 	})
-	eng.SetConfirm(func(toolName, argsJSON string) bool {
-		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
-			"name":      toolName,
-			"arguments": argsJSON,
-		})
-		return <-a.confirmCh
-	})
 	a.engine = eng
 	a.ready = true
 
@@ -539,9 +532,17 @@ func (a *App) Chat(message, conversationID string) string {
 		a.chatCancelMu.Unlock()
 	}()
 
+	confirm := func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	}
+
 	var lastUsage interface{}
 
-	convID, err := a.engine.Chat(chatCtx, conversationID, message, "", func(event engine.Event) {
+	convID, err := a.engine.Chat(chatCtx, conversationID, message, "", confirm, func(event engine.Event) {
 		if event.Type == "usage" {
 			lastUsage = event.Data
 			return
@@ -761,8 +762,16 @@ func (a *App) EditMessage(convID string, msgIndex int, newContent string) string
 		a.chatCancelMu.Unlock()
 	}()
 
+	confirm := func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	}
+
 	var lastUsage interface{}
-	err := a.engine.EditMessageAndRegenerate(chatCtx, convID, msgIndex, newContent, "", func(event engine.Event) {
+	err := a.engine.EditMessageAndRegenerate(chatCtx, convID, msgIndex, newContent, "", confirm, func(event engine.Event) {
 		if event.Type == "usage" {
 			lastUsage = event.Data
 			return
@@ -1088,8 +1097,16 @@ func (a *App) RegenerateFrom(convID string, fromIndex int) string {
 		a.chatCancelMu.Unlock()
 	}()
 
+	confirm := func(toolName, argsJSON string) bool {
+		wailsRuntime.EventsEmit(a.ctx, "tool-confirm", map[string]string{
+			"name":      toolName,
+			"arguments": argsJSON,
+		})
+		return <-a.confirmCh
+	}
+
 	var lastUsage interface{}
-	err := a.engine.RegenerateFrom(chatCtx, convID, fromIndex, "", func(event engine.Event) {
+	err := a.engine.RegenerateFrom(chatCtx, convID, fromIndex, "", confirm, func(event engine.Event) {
 		if event.Type == "usage" {
 			lastUsage = event.Data
 			return

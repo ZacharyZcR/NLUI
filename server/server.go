@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/ZacharyZcR/NLUI/config"
 	"github.com/ZacharyZcR/NLUI/core/conversation"
@@ -12,11 +14,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type chatSession struct {
+	cancel    context.CancelFunc
+	confirmCh chan bool
+}
+
 type Server struct {
-	cfg     *config.Config
-	engine  *engine.Engine
-	router  *gin.Engine
-	convMgr *conversation.Manager // Persist across reloads
+	cfg        *config.Config
+	engine     *engine.Engine
+	router     *gin.Engine
+	convMgr    *conversation.Manager // Persist across reloads
+	sessions   map[string]*chatSession
+	sessionsMu sync.Mutex
 }
 
 type ChatRequest struct {
@@ -26,8 +35,9 @@ type ChatRequest struct {
 
 func New(cfg *config.Config, eng *engine.Engine) *Server {
 	s := &Server{
-		cfg:    cfg,
-		engine: eng,
+		cfg:      cfg,
+		engine:   eng,
+		sessions: make(map[string]*chatSession),
 	}
 
 	gin.SetMode(gin.ReleaseMode)
@@ -48,6 +58,11 @@ func New(cfg *config.Config, eng *engine.Engine) *Server {
 
 		// Chat
 		api.POST("/chat", s.chat)
+		api.POST("/chat/stop", s.stopChat)
+		api.POST("/chat/confirm", s.confirmTool)
+
+		// Specs
+		api.POST("/specs/upload", s.uploadSpec)
 
 		// Conversations
 		api.GET("/conversations", s.listConversations)
@@ -119,12 +134,48 @@ func (s *Server) chat(c *gin.Context) {
 		authToken = strings.TrimPrefix(h, "Bearer ")
 	}
 
+	// Create session
+	sessionID := generateSessionID()
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	session := &chatSession{cancel: cancel, confirmCh: make(chan bool, 1)}
+	s.sessionsMu.Lock()
+	s.sessions[sessionID] = session
+	s.sessionsMu.Unlock()
+	defer func() {
+		s.sessionsMu.Lock()
+		delete(s.sessions, sessionID)
+		s.sessionsMu.Unlock()
+	}()
+
 	// SSE
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	convID, err := s.engine.Chat(c.Request.Context(), req.ConversationID, req.Message, authToken, func(event engine.Event) {
+	// Send session event
+	if data, err := json.Marshal(gin.H{"session_id": sessionID}); err == nil {
+		fmt.Fprintf(c.Writer, "event: session\ndata: %s\n\n", string(data))
+		c.Writer.Flush()
+	}
+
+	confirm := func(toolName, argsJSON string) bool {
+		if data, err := json.Marshal(gin.H{
+			"session_id": sessionID,
+			"name":       toolName,
+			"arguments":  argsJSON,
+		}); err == nil {
+			fmt.Fprintf(c.Writer, "event: tool_confirm\ndata: %s\n\n", string(data))
+			c.Writer.Flush()
+		}
+		select {
+		case approved := <-session.confirmCh:
+			return approved
+		case <-ctx.Done():
+			return false
+		}
+	}
+
+	convID, err := s.engine.Chat(ctx, req.ConversationID, req.Message, authToken, confirm, func(event engine.Event) {
 		if data, err := json.Marshal(event.Data); err == nil {
 			fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, string(data))
 			c.Writer.Flush()
