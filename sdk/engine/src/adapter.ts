@@ -4,7 +4,7 @@ import type { NLUIEngine, Conversation, EngineEvent } from './types.js';
  * Adapted conversation shape matching @nlui/client's Conversation interface.
  * Converts numeric timestamps to ISO strings.
  */
-interface ClientConversation {
+export interface ClientConversation {
   id: string;
   title: string;
   messages: Array<{ role: string; content: string; tool_calls?: unknown[] }>;
@@ -12,12 +12,12 @@ interface ClientConversation {
   updated_at: string;
 }
 
-interface ClientChatEvent {
+export interface ClientChatEvent {
   type: string;
   data: unknown;
 }
 
-interface ClientChatOptions {
+export interface ClientChatOptions {
   conversationId?: string;
   onEvent?: (event: ClientChatEvent) => void;
   onDone?: (conversationId: string) => void;
