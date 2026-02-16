@@ -53,6 +53,7 @@ export interface AuthConfig {
 export interface ParamInfo {
   name: string;
   in: 'path' | 'query' | 'header';
+  type?: string;
   required: boolean;
 }
 
@@ -71,8 +72,29 @@ export interface TargetConfig {
   name: string;
   baseURL?: string;
   spec?: string | Record<string, unknown>;
+  tools?: string | ToolSet;
   auth?: AuthConfig;
   description?: string;
+}
+
+// ---- ToolSet Types ----
+
+export interface ToolSet {
+  version: number;
+  target: string;
+  base_url: string;
+  auth: AuthConfig;
+  endpoints: ToolSetEndpoint[];
+}
+
+export interface ToolSetEndpoint {
+  name: string;
+  description: string;
+  method: string;
+  path: string;
+  params: ParamInfo[];
+  has_body: boolean;
+  parameters: Record<string, unknown>;
 }
 
 // ---- Conversation Types ----

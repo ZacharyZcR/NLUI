@@ -87,7 +87,9 @@ type Target struct {
 	Name        string `json:"name"`
 	BaseURL     string `json:"base_url"`
 	Spec        string `json:"spec,omitempty"`
+	Tools       string `json:"tools,omitempty"`
 	AuthType    string `json:"auth_type,omitempty"`
+	AuthToken   string `json:"auth_token,omitempty"`
 	Description string `json:"description,omitempty"`
 	ToolCount   int    `json:"tool_count,omitempty"`
 }
@@ -406,14 +408,15 @@ func (c *Client) DeleteConversation(ctx context.Context, id string) error {
 
 // ============= Phase 1: Targets Management =============
 
-// AddTarget dynamically adds an OpenAPI target.
+// AddTarget dynamically adds an API target (OpenAPI spec or ToolSet JSON).
 func (c *Client) AddTarget(ctx context.Context, target Target) (*AddTargetResponse, error) {
 	body := map[string]string{
 		"name":        target.Name,
 		"base_url":    target.BaseURL,
 		"spec":        target.Spec,
+		"tools":       target.Tools,
 		"auth_type":   target.AuthType,
-		"auth_token":  "", // Will be passed separately if needed
+		"auth_token":  target.AuthToken,
 		"description": target.Description,
 	}
 	bodyBytes, err := json.Marshal(body)

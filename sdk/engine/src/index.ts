@@ -8,6 +8,7 @@ export { createClientAdapter } from './adapter.js';
 export type {
   Message, ToolCall, Tool, StreamChunk, Usage,
   AuthConfig, ParamInfo, Endpoint, TargetConfig,
+  ToolSet, ToolSetEndpoint,
   Conversation, LLMConfig, EngineConfig,
   ConfirmFunc, EngineEvent, ChatOptions,
   StorageAdapter, NLUIEngine,
@@ -21,6 +22,7 @@ export { LLMClient } from './llm/client.js';
 export { ToolLoop } from './toolloop/loop.js';
 export { GatewayCaller } from './gateway/caller.js';
 export { buildTools } from './gateway/builder.js';
+export { buildFromToolSet, parseToolSet } from './gateway/toolset.js';
 export { loadSpec } from './gateway/openapi.js';
 export { ConversationManager } from './conversation/manager.js';
 export { buildSystemPrompt } from './prompt.js';

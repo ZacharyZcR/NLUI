@@ -1,10 +1,11 @@
 import type {
-  EngineConfig, NLUIEngine, Tool, Conversation, ChatOptions, EngineEvent,
+  EngineConfig, NLUIEngine, Tool, Conversation, ChatOptions, EngineEvent, ToolSet,
 } from './types.js';
 import { LLMClient } from './llm/client.js';
 import { ToolLoop } from './toolloop/loop.js';
 import { GatewayCaller } from './gateway/caller.js';
 import { buildTools } from './gateway/builder.js';
+import { buildFromToolSet, parseToolSet } from './gateway/toolset.js';
 import { loadSpec } from './gateway/openapi.js';
 import { ConversationManager } from './conversation/manager.js';
 import { MemoryStorage } from './conversation/storage.js';
@@ -25,12 +26,25 @@ export async function createEngine(config: EngineConfig): Promise<NLUIEngine> {
   const allEndpoints = new Map<string, Endpoint>();
 
   for (const target of config.targets ?? []) {
-    if (!target.spec) continue;
     try {
-      const doc = await loadSpec(target.spec);
-      const auth = target.auth ?? { type: '' };
-      const baseURL = target.baseURL ?? '';
-      const { tools, endpoints } = buildTools(doc, target.name, baseURL, auth);
+      let tools: Tool[];
+      let endpoints: Map<string, Endpoint>;
+
+      if (target.tools) {
+        // ToolSet: object or JSON string
+        const ts: ToolSet = typeof target.tools === 'string'
+          ? parseToolSet(target.tools)
+          : target.tools;
+        ({ tools, endpoints } = buildFromToolSet(ts));
+      } else if (target.spec) {
+        const doc = await loadSpec(target.spec);
+        const auth = target.auth ?? { type: '' };
+        const baseURL = target.baseURL ?? '';
+        ({ tools, endpoints } = buildTools(doc, target.name, baseURL, auth));
+      } else {
+        continue;
+      }
+
       allTools.push(...tools);
       for (const [k, v] of endpoints) allEndpoints.set(k, v);
     } catch (err) {

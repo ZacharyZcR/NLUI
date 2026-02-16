@@ -428,34 +428,45 @@ func (a *App) ListTargets() []map[string]interface{} {
 	result := make([]map[string]interface{}, 0)
 	for _, tgt := range cfg.Targets {
 		toolCount := 0
-		specFound := ""
+		source := tgt.Spec // what to show in "spec" field
 
-		if tgt.Spec != "" {
-			if doc, err := gateway.LoadSpec(tgt.Spec); err == nil {
-				auth := gateway.AuthConfig{Type: tgt.Auth.Type, HeaderName: tgt.Auth.HeaderName, Token: tgt.Auth.Token}
-				tools, _ := gateway.BuildTools(doc, tgt.Name, tgt.BaseURL, auth)
-				toolCount = len(tools)
-				specFound = tgt.Spec
-			}
-		} else if tgt.BaseURL != "" {
-			if doc, url, err := gateway.DiscoverSpec(tgt.BaseURL); err == nil {
-				auth := gateway.AuthConfig{Type: tgt.Auth.Type, HeaderName: tgt.Auth.HeaderName, Token: tgt.Auth.Token}
-				tools, _ := gateway.BuildTools(doc, tgt.Name, tgt.BaseURL, auth)
-				toolCount = len(tools)
-				specFound = url
+		// Try cached/explicit toolset first (fast path, no parsing)
+		if ts := loadTargetToolSet(tgt); ts != nil {
+			toolCount = len(ts.Endpoints)
+			if source == "" {
+				source = tgt.Tools
 			}
 		}
 
 		result = append(result, map[string]interface{}{
 			"name":        tgt.Name,
 			"base_url":    tgt.BaseURL,
-			"spec":        specFound,
+			"spec":        source,
 			"auth_type":   tgt.Auth.Type,
 			"description": tgt.Description,
 			"tools":       toolCount,
 		})
 	}
 	return result
+}
+
+// loadTargetToolSet tries to load toolset from explicit path or cache.
+func loadTargetToolSet(tgt config.Target) *gateway.ToolSet {
+	// 1. Explicit toolset file
+	if tgt.Tools != "" {
+		ts, err := gateway.LoadToolSet(tgt.Tools)
+		if err == nil {
+			return ts
+		}
+	}
+	// 2. Cached toolset from previous bootstrap
+	if tsPath, err := config.ToolSetPath(tgt.Name); err == nil {
+		ts, err := gateway.LoadToolSet(tsPath)
+		if err == nil {
+			return ts
+		}
+	}
+	return nil
 }
 
 // AddTarget adds a new API target to the config and reinitializes.
