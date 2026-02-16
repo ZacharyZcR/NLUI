@@ -1,6 +1,9 @@
 // Core factory
 export { createEngine } from './engine.js';
 
+// Client adapter (for @nlui/vue-ui ChatInterface compatibility)
+export { createClientAdapter } from './adapter.js';
+
 // Types
 export type {
   Message, ToolCall, Tool, StreamChunk, Usage,
