@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Go: build & test (main module) ───
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: go build ./bootstrap ./cmd/... ./config ./core/... ./engine ./gateway ./mcp ./server
+
+      - name: Test
+        run: go test ./core/... ./engine/... ./gateway/... ./config/...
+
+  # ─── Go: desktop module (compile-only, needs GTK/WebKit headers) ───
+  go-desktop:
+    name: Go Desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Build
+        working-directory: desktop
+        run: go build -tags dev -o /dev/null .
