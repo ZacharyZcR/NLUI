@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: "Discussion / 讨论"
+    url: https://github.com/ZacharyZcR/NLUI/discussions
+    about: "Ask questions or share ideas / 提问或分享想法"

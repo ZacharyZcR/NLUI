@@ -1,0 +1,64 @@
+name: "Bug Report / 缺陷报告"
+description: "Report a bug / 报告一个缺陷"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting! Please fill in as much detail as possible.
+        感谢反馈！请尽量详细填写以下信息。
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "Component / 组件"
+      description: "Which part of NLUI is affected? / 涉及 NLUI 的哪个部分？"
+      options:
+        - "Go Server (backend)"
+        - "@nlui/engine (TS engine)"
+        - "@nlui/react-ui"
+        - "@nlui/vue-ui"
+        - "@nlui/components (Web Components)"
+        - "Desktop (Wails)"
+        - "SDK (JS/Python/Go/Java/Rust)"
+        - "Other / 其他"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description / 描述"
+      description: "What happened? What did you expect? / 发生了什么？你期望的行为是？"
+      placeholder: |
+        A clear description of the bug.
+        清晰描述缺陷现象。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce / 复现步骤"
+      description: "How can we reproduce this? / 如何复现？"
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment / 环境"
+      description: "OS, Node/Go version, browser, etc. / 操作系统、Node/Go 版本、浏览器等"
+      placeholder: |
+        - OS: Windows 11 / macOS 14 / Ubuntu 22.04
+        - Node: v20.x / Go: 1.22
+        - Browser: Chrome 120
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs / Error Output / 日志 / 错误输出"
+      description: "Paste relevant logs or error messages. / 粘贴相关日志或错误信息。"
+      render: shell
