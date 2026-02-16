@@ -58,4 +58,6 @@ jobs:
 
       - name: Build
         working-directory: desktop
-        run: go build -tags dev -o /dev/null .
+        run: |
+          mkdir -p frontend/dist
+          go build -tags dev -o /dev/null .
