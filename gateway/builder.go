@@ -18,7 +18,7 @@ func sanitizeToolName(name string) string {
 	if len(name) == 0 {
 		return "_"
 	}
-	if c := name[0]; !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+	if c := name[0]; (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && c != '_' {
 		name = "_" + name
 	}
 	if len(name) > 64 {

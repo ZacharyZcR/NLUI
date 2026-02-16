@@ -30,7 +30,7 @@ func main() {
 		fmt.Println()
 	}
 
-	fmt.Println("=== MCP Tool Definitions ===\n")
+	fmt.Println("\n=== MCP Tool Definitions ===")
 
 	var mcpTools []mcp.MCPTool
 	for _, t := range tools {

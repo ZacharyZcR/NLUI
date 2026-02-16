@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  # ─── Go: build & test (main module) ───
+  # ─── Go: build & test ───
   go:
     name: Go
     runs-on: ubuntu-latest
@@ -24,7 +24,23 @@ jobs:
       - name: Test
         run: go test ./core/... ./engine/... ./gateway/... ./config/...
 
-  # ─── Go: desktop module (compile-only, needs GTK/WebKit headers) ───
+  # ─── Go: lint ───
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.9
+          args: ./bootstrap/... ./cmd/... ./config/... ./core/... ./engine/... ./gateway/... ./mcp/... ./server/...
+
+  # ─── Go: desktop compile check ───
   go-desktop:
     name: Go Desktop
     runs-on: ubuntu-latest

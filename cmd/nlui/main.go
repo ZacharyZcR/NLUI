@@ -50,6 +50,7 @@ func main() {
 
 	// MCP Server mode: expose tools via MCP protocol (no Engine needed)
 	if mcpStdio {
+		res.Close()
 		mcpTools := llmToolsToMCP(res.Tools)
 		srv := mcp.NewServer(mcpTools, res.Router)
 		if err := srv.RunStdio(); err != nil {
@@ -59,6 +60,7 @@ func main() {
 	}
 
 	if mcpSSEPort > 0 {
+		res.Close()
 		mcpTools := llmToolsToMCP(res.Tools)
 		srv := mcp.NewServer(mcpTools, res.Router)
 		if err := srv.RunSSE(mcpSSEPort); err != nil {

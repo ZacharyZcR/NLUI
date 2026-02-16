@@ -154,7 +154,7 @@ func TestUpdateToolConfig(t *testing.T) {
 func TestToolConfigInherited(t *testing.T) {
 	m := NewManager("")
 	conv1 := m.Create("first", "")
-	m.UpdateToolConfig(conv1.ID, []string{"github"}, []string{"delete_repo"})
+	_ = m.UpdateToolConfig(conv1.ID, []string{"github"}, []string{"delete_repo"})
 
 	conv2 := m.Create("second", "")
 	if len(conv2.EnabledSources) != 1 || conv2.EnabledSources[0] != "github" {

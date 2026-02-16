@@ -126,7 +126,7 @@ func (l *Loop) Run(ctx context.Context, messages []llm.Message, tools []llm.Tool
 			// Confirmation gate for dangerous operations
 			if confirm != nil && isDangerous(tc.Function.Name, tc.Function.Arguments) {
 				if !confirm(tc.Function.Name, tc.Function.Arguments) {
-					result := "Operation cancelled by user"
+					result := "Operation canceled by user"
 					onEvent(Event{Type: "tool_result", Data: ToolResultEvent{
 						Name:   tc.Function.Name,
 						Result: result,
