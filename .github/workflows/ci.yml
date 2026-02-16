@@ -60,4 +60,5 @@ jobs:
         working-directory: desktop
         run: |
           mkdir -p frontend/dist
+          touch frontend/dist/.gitkeep
           go build -tags dev -o /dev/null .
