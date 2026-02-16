@@ -28,3 +28,7 @@ sdk/*/node_modules/
 # Test artifacts
 coverage.out
 kelper.exe
+
+# VitePress
+docs/.vitepress/dist/
+docs/.vitepress/cache/
