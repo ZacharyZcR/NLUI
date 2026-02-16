@@ -104,7 +104,9 @@ func TestLoadToolSetNotFound(t *testing.T) {
 func TestLoadToolSetInvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.json")
-	os.WriteFile(path, []byte("{invalid"), 0644)
+	if err := os.WriteFile(path, []byte("{invalid"), 0644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
 
 	_, err := LoadToolSet(path)
 	if err == nil {
