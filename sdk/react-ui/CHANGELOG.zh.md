@@ -11,7 +11,7 @@
 - **完整聊天界面** - `<ChatInterface />` 一体化组件
 - **工具调用支持** - 自动渲染 `tool_call` 和 `tool_result` 消息
 - **智能JSON渲染** - 自动识别表格、键值对、列表等数据结构
-- **kelper fence blocks** - 支持 `` ```kelper:table `` 特殊markdown块
+- **nlui fence blocks** - 支持 `` ```nlui:table `` 特殊markdown块
 - **流式输出** - SSE流式传输支持
 - **错误处理** - 自动显示错误信息
 - **主题系统** - light/dark模式切换

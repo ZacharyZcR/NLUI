@@ -143,7 +143,7 @@ onMounted(() => {
 - ✅ 完整的聊天界面
 - ✅ 工具调用支持
 - ✅ 智能 JSON 渲染（表格、键值对、列表自动识别）
-- ✅ kelper fence blocks 支持
+- ✅ nlui fence blocks 支持
 - ✅ 流式输出
 - ✅ 错误处理
 - ✅ 主题切换（light/dark）

@@ -4,7 +4,7 @@ export type Block =
   | { type: "markdown"; content: string }
   | { type: "render"; hint: RenderHint; data: string };
 
-const FENCE_RE = /```kelper:(table|kv|badges)\n([\s\S]*?)```/g;
+const FENCE_RE = /```nlui:(table|kv|badges)\n([\s\S]*?)```/g;
 
 export function splitRenderBlocks(content: string): Block[] {
   const blocks: Block[] = [];

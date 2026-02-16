@@ -17,10 +17,10 @@ func main() {
 	fmt.Println("NLUI - Natural Language User Interface")
 	fmt.Println("=====================")
 
-	// Parse args: kelper [--mcp|--mcp-sse PORT] [config-path]
+	// Parse args: nlui [--mcp|--mcp-sse PORT] [config-path]
 	mcpStdio := false
 	mcpSSEPort := 0
-	cfgPath := "kelper.yaml"
+	cfgPath := "nlui.yaml"
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {

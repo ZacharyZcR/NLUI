@@ -1,8 +1,8 @@
-kelper
-kelper.exe
+nlui
+nlui.exe
 *.db
-kelper.yaml
-!kelper.example.yaml
+nlui.yaml
+!nlui.example.yaml
 .claude/settings.local.json
 desktop/desktop.exe
 **/__pycache__/
@@ -27,3 +27,4 @@ sdk/*/node_modules/
 
 # Test artifacts
 coverage.out
+kelper.exe

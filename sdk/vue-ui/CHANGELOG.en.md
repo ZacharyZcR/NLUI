@@ -11,7 +11,7 @@ Complete Vue 3 UI component library, ported from @nlui/react-ui and adapted for 
 - **Full chat interface** - `<ChatInterface />` all-in-one component
 - **Tool call support** - Automatic rendering of `tool_call` and `tool_result` messages
 - **Smart JSON rendering** - Auto-detects tables, key-value pairs, lists, and other data structures
-- **kelper fence blocks** - Supports `` ```kelper:table `` special markdown blocks
+- **nlui fence blocks** - Supports `` ```nlui:table `` special markdown blocks
 - **Streaming output** - SSE streaming support
 - **Error handling** - Automatic error message display
 - **Theme system** - light/dark mode toggle

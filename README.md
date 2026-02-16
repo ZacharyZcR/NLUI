@@ -68,7 +68,7 @@ NLUI: Done. User zhangsan has been deleted.
 ### 1. Configure
 
 ```bash
-cp nlui.example.yaml kelper.yaml
+cp nlui.example.yaml nlui.yaml
 ```
 
 ```yaml

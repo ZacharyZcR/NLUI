@@ -14,7 +14,7 @@ A Lit-based Web Components UI library, framework-agnostic, usable in any environ
 
 2. **Utilities**
    - `detect-shape.ts` - JSON data shape detection
-   - `render-blocks.ts` - kelper fence block splitting
+   - `render-blocks.ts` - nlui fence block splitting
    - `utils.ts` - cn function
    - `types.ts` - Message, Conversation types
 
@@ -37,7 +37,7 @@ A Lit-based Web Components UI library, framework-agnostic, usable in any environ
 
 6. **Message Components**
    - nlui-user-message - Edit, delete, copy functionality
-   - nlui-assistant-message - Basic markdown rendering + kelper block support
+   - nlui-assistant-message - Basic markdown rendering + nlui block support
    - nlui-tool-call-message - Expandable/collapsible
    - nlui-tool-result-message - RichResult integration
    - nlui-message - Message router
@@ -228,7 +228,7 @@ onMounted(() => {
 |---------|----------|--------|----------------|--------|
 | Message rendering | Yes | Yes | Yes | 100% parity |
 | Tool calls | Yes | Yes | Yes | 100% parity |
-| kelper block | Yes | Yes | Yes | 100% parity |
+| nlui block | Yes | Yes | Yes | 100% parity |
 | Smart JSON rendering | Yes | Yes | Yes | 100% parity |
 | Streaming output | Yes | Yes | Yes | 100% parity |
 | Markdown rendering | Yes (md-editor-rt) | Yes (md-editor-rt) | Simplified | Basic support |

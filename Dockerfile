@@ -11,4 +11,4 @@ COPY --from=build /nlui /usr/local/bin/nlui
 COPY nlui.example.yaml /etc/nlui/nlui.example.yaml
 EXPOSE 9000
 ENTRYPOINT ["nlui"]
-CMD ["/etc/nlui/kelper.yaml"]
+CMD ["/etc/nlui/nlui.yaml"]

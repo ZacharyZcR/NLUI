@@ -58,11 +58,15 @@ func (a *App) configPath() string {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// One-time migration: copy local kelper.yaml to global dir if needed
+	// One-time migration: copy local config to global dir if needed
 	globalPath := a.configPath()
 	if globalPath != "" {
 		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
-			if data, err := os.ReadFile("kelper.yaml"); err == nil {
+			data, readErr := os.ReadFile("nlui.yaml")
+			if readErr != nil {
+				data, readErr = os.ReadFile("nlui.yaml") // legacy fallback
+			}
+			if readErr == nil {
 				os.WriteFile(globalPath, data, 0600)
 			}
 		}
@@ -242,7 +246,7 @@ func parseModelsResponse(resp *http.Response) []string {
 	return models
 }
 
-// SaveLLMConfig writes LLM settings to kelper.yaml and reinitializes.
+// SaveLLMConfig writes LLM settings to nlui.yaml and reinitializes.
 func (a *App) SaveLLMConfig(apiBase, apiKey, model string) string {
 	if err := a.svc.SaveLLMConfig(apiBase, apiKey, model); err != nil {
 		return err.Error()
@@ -294,7 +298,7 @@ func (a *App) TestProxy(proxy string) string {
 	return ""
 }
 
-// SaveProxy writes the proxy setting to kelper.yaml (no reinit needed).
+// SaveProxy writes the proxy setting to nlui.yaml (no reinit needed).
 func (a *App) SaveProxy(proxy string) string {
 	if err := a.svc.SaveProxy(proxy); err != nil {
 		return err.Error()
@@ -407,7 +411,7 @@ func (a *App) Chat(message, conversationID string) string {
 	if !a.ready {
 		wailsRuntime.EventsEmit(a.ctx, "chat-event", map[string]interface{}{
 			"type": "error",
-			"data": map[string]string{"error": "not initialized, check kelper.yaml"},
+			"data": map[string]string{"error": "not initialized, check nlui.yaml"},
 		})
 		return ""
 	}

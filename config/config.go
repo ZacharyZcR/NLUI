@@ -67,13 +67,13 @@ func GlobalDir() (string, error) {
 	return dir, os.MkdirAll(dir, 0755)
 }
 
-// GlobalConfigPath returns the path to the global kelper.yaml.
+// GlobalConfigPath returns the path to the global nlui.yaml.
 func GlobalConfigPath() (string, error) {
 	dir, err := GlobalDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "kelper.yaml"), nil
+	return filepath.Join(dir, "nlui.yaml"), nil
 }
 
 // ToolSetPath returns the path for a target's toolset file: <GlobalDir>/toolsets/<name>.json.

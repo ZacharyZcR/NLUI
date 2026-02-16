@@ -75,7 +75,7 @@ function App() {
 
 ✅ **完整工具调用支持** - 自动渲染tool_call和tool_result消息
 ✅ **智能JSON渲染** - 自动识别表格、键值对、列表等数据结构
-✅ **kelper fence block** - 支持`` ```kelper:table ``等特殊markdown块
+✅ **nlui fence block** - 支持`` ```nlui:table ``等特殊markdown块
 ✅ **流式输出** - 支持SSE流式传输
 ✅ **错误处理** - 自动显示错误信息
 ✅ **主题切换** - 支持light/dark模式

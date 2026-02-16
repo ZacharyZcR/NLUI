@@ -62,7 +62,7 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
   const [locale, setLocale] = useState<Locale>(initial || "en");
 
   useEffect(() => {
-    const saved = localStorage.getItem("kelper-locale") as Locale | null;
+    const saved = localStorage.getItem("nlui-locale") as Locale | null;
     if (saved && translations[saved]) {
       setLocale(saved);
     }
@@ -79,7 +79,7 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
     setLocale((prev) => {
       const idx = langCycle.indexOf(prev);
       const next = langCycle[(idx + 1) % langCycle.length];
-      localStorage.setItem("kelper-locale", next);
+      localStorage.setItem("nlui-locale", next);
       return next;
     });
   }, []);

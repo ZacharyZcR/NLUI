@@ -170,7 +170,7 @@ func (c *Client) notify(method string) error {
 func (c *Client) initialize() error {
 	params := InitializeParams{
 		ProtocolVersion: "2024-11-05",
-		ClientInfo:      EntityInfo{Name: "kelper", Version: "0.1.0"},
+		ClientInfo:      EntityInfo{Name: "nlui", Version: "0.1.0"},
 	}
 	if _, err := c.send("initialize", params); err != nil {
 		return err

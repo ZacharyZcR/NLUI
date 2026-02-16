@@ -2,7 +2,7 @@
 
 ## Overview
 
-React UI component library extracted from the Kelper desktop app, providing an out-of-the-box chat interface for NLUI.
+React UI component library extracted from the NLUI desktop app, providing an out-of-the-box chat interface for NLUI.
 
 ## Completion Status
 
@@ -14,7 +14,7 @@ React UI component library extracted from the Kelper desktop app, providing an o
 
 2. **Utilities**
    - `detect-shape.ts` - JSON data shape detection
-   - `render-blocks.ts` - kelper fence block splitting
+   - `render-blocks.ts` - nlui fence block splitting
    - `utils.ts` - cn function (clsx + tailwind-merge)
    - `types.ts` - Message, Conversation types
 
@@ -37,7 +37,7 @@ React UI component library extracted from the Kelper desktop app, providing an o
 
 6. **Message Components**
    - `UserMessage` - Edit, delete, copy functionality
-   - `AssistantMessage` - kelper block support, retry
+   - `AssistantMessage` - nlui block support, retry
    - `ToolCallMessage` - Expandable/collapsible
    - `ToolResultMessage` - RichResult integration
 
@@ -176,7 +176,7 @@ peerDependencies:
 |---------|---------|----------|--------|
 | Message rendering | Yes | Yes | 100% parity |
 | Tool calls | Yes | Yes | 100% parity |
-| kelper block | Yes | Yes | 100% parity |
+| nlui block | Yes | Yes | 100% parity |
 | Smart JSON rendering | Yes | Yes | 100% parity |
 | Streaming output | Yes | Yes | 100% parity |
 | Edit/delete messages | Yes | Partial | Missing backend API |

@@ -4,5 +4,5 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - ./kelper.yaml:/etc/nlui/kelper.yaml:ro
+      - ./nlui.yaml:/etc/nlui/nlui.yaml:ro
     restart: unless-stopped

@@ -204,7 +204,7 @@ function AssistantMessage({ content, isLast, onRetry, onDelete }: { content: str
             previewTheme="github"
             codeTheme="github"
             language="en-US"
-            className="kelper-md"
+            className="nlui-md"
           />
           <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/assistant:opacity-100 transition-opacity flex gap-1">
             {isLast && onRetry && (
@@ -253,7 +253,7 @@ function AssistantMessage({ content, isLast, onRetry, onDelete }: { content: str
               previewTheme="github"
               codeTheme="github"
               language="en-US"
-              className="kelper-md"
+              className="nlui-md"
             />
           ) : (
             <RichResult key={i} raw={block.data} forceType={block.hint} />

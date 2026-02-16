@@ -184,47 +184,47 @@
 .typing-dot:nth-child(3) { animation-delay: 0.3s; }
 
 /* md-editor-rt overrides */
-.kelper-md .md-editor-preview-wrapper {
+.nlui-md .md-editor-preview-wrapper {
   padding: 0;
 }
-.kelper-md.md-editor {
+.nlui-md.md-editor {
   background: transparent;
   color: inherit;
 }
-.kelper-md .md-editor-preview {
+.nlui-md .md-editor-preview {
   font-size: 0.875rem;
   line-height: 1.625;
   word-break: break-word;
 }
-.kelper-md .md-editor-preview p {
+.nlui-md .md-editor-preview p {
   margin: 0.25em 0;
 }
-.kelper-md .md-editor-preview pre {
+.nlui-md .md-editor-preview pre {
   border-radius: 0.5rem;
   font-size: 0.8rem;
   margin: 0.5em 0;
 }
-.kelper-md .md-editor-preview code:not(pre code) {
+.nlui-md .md-editor-preview code:not(pre code) {
   padding: 0.15em 0.4em;
   border-radius: 0.25rem;
   font-size: 0.85em;
   background: oklch(0.5 0 0 / 15%);
 }
-.kelper-md .md-editor-preview table {
+.nlui-md .md-editor-preview table {
   font-size: 0.8rem;
 }
-.kelper-md .md-editor-preview ul,
-.kelper-md .md-editor-preview ol {
+.nlui-md .md-editor-preview ul,
+.nlui-md .md-editor-preview ol {
   margin: 0.25em 0;
   padding-left: 1.5em;
 }
-.kelper-md .md-editor-preview h1,
-.kelper-md .md-editor-preview h2,
-.kelper-md .md-editor-preview h3 {
+.nlui-md .md-editor-preview h1,
+.nlui-md .md-editor-preview h2,
+.nlui-md .md-editor-preview h3 {
   margin-top: 0.75em;
   margin-bottom: 0.25em;
 }
-.kelper-md .md-editor-preview blockquote {
+.nlui-md .md-editor-preview blockquote {
   margin: 0.5em 0;
   padding-left: 1em;
   border-left: 3px solid oklch(0.5 0 0 / 25%);

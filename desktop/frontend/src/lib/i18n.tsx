@@ -246,7 +246,7 @@ const I18nContext = createContext<I18nContextValue>({
 });
 
 function getInitialTheme(): Theme {
-  const saved = localStorage.getItem("kelper-theme") as Theme | null;
+  const saved = localStorage.getItem("nlui-theme") as Theme | null;
   if (saved === "light" || saved === "dark") return saved;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
@@ -265,7 +265,7 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
   }, [theme]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("kelper-locale") as Locale | null;
+    const saved = localStorage.getItem("nlui-locale") as Locale | null;
     if (saved && translations[saved]) {
       setLocale(saved);
     }
@@ -282,7 +282,7 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
     setLocale((prev) => {
       const idx = langCycle.indexOf(prev);
       const next = langCycle[(idx + 1) % langCycle.length];
-      localStorage.setItem("kelper-locale", next);
+      localStorage.setItem("nlui-locale", next);
       return next;
     });
   }, []);
@@ -290,7 +290,7 @@ export function I18nProvider({ initial, children }: { initial?: Locale; children
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("kelper-theme", next);
+      localStorage.setItem("nlui-theme", next);
       return next;
     });
   }, []);

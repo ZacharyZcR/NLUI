@@ -68,7 +68,7 @@ NLUI: 完成。用户 zhangsan 已被删除。
 ### 1. 配置
 
 ```bash
-cp nlui.example.yaml kelper.yaml
+cp nlui.example.yaml nlui.yaml
 ```
 
 ```yaml

@@ -14,7 +14,7 @@
 
 2. **工具函数** ✅
    - `detect-shape.ts` - JSON 数据形状识别
-   - `render-blocks.ts` - kelper fence block 分割
+   - `render-blocks.ts` - nlui fence block 分割
    - `utils.ts` - cn 函数
    - `types.ts` - Message, Conversation 类型
 
@@ -37,7 +37,7 @@
 
 6. **消息组件** ✅
    - nlui-user-message - 编辑、删除、复制功能
-   - nlui-assistant-message - 基础 markdown 渲染 + kelper block 支持
+   - nlui-assistant-message - 基础 markdown 渲染 + nlui block 支持
    - nlui-tool-call-message - 可展开/折叠
    - nlui-tool-result-message - RichResult 集成
    - nlui-message - 消息路由器
@@ -228,7 +228,7 @@ onMounted(() => {
 |-----|----------|--------|----------------|------|
 | 消息渲染 | ✅ | ✅ | ✅ | 100% 功能对等 |
 | 工具调用 | ✅ | ✅ | ✅ | 100% 功能对等 |
-| kelper block | ✅ | ✅ | ✅ | 100% 功能对等 |
+| nlui block | ✅ | ✅ | ✅ | 100% 功能对等 |
 | 智能 JSON 渲染 | ✅ | ✅ | ✅ | 100% 功能对等 |
 | 流式输出 | ✅ | ✅ | ✅ | 100% 功能对等 |
 | Markdown 渲染 | ✅ (md-editor-rt) | ✅ (md-editor-rt) | ⚠️ (简化版) | 基础支持 |

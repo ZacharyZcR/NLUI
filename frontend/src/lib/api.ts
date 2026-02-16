@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_KELPER_URL || "http://localhost:9000";
+const API_BASE = process.env.NEXT_PUBLIC_NLUI_URL || "http://localhost:9000";
 
 export interface ChatEvent {
   type: "tool_call" | "tool_result" | "content" | "error" | "done";

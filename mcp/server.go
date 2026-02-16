@@ -152,7 +152,7 @@ func (s *Server) handleRequest(req RPCRequest) *RPCResponse {
 func (s *Server) handleInitialize(req RPCRequest) *RPCResponse {
 	result := InitializeResult{
 		ProtocolVersion: "2024-11-05",
-		ServerInfo:      EntityInfo{Name: "kelper", Version: "0.1.0"},
+		ServerInfo:      EntityInfo{Name: "nlui", Version: "0.1.0"},
 		Capabilities:    ServerCapabilities{Tools: &ToolsCapability{}},
 	}
 	data, err := json.Marshal(result)

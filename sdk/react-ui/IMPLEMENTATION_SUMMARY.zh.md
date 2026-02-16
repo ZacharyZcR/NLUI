@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-从Kelper桌面端抽离的React UI组件库，为NLUI提供开箱即用的聊天界面。
+从NLUI桌面端抽离的React UI组件库，为NLUI提供开箱即用的聊天界面。
 
 ## 完成情况
 
@@ -14,7 +14,7 @@
 
 2. **工具函数** ✅
    - `detect-shape.ts` - JSON数据形状识别
-   - `render-blocks.ts` - kelper fence block分割
+   - `render-blocks.ts` - nlui fence block分割
    - `utils.ts` - cn函数（clsx + tailwind-merge）
    - `types.ts` - Message, Conversation类型
 
@@ -37,7 +37,7 @@
 
 6. **消息组件** ✅
    - `UserMessage` - 编辑、删除、复制功能
-   - `AssistantMessage` - kelper block支持、重试功能
+   - `AssistantMessage` - nlui block支持、重试功能
    - `ToolCallMessage` - 可展开/折叠
    - `ToolResultMessage` - RichResult集成
 
@@ -176,7 +176,7 @@ peerDependencies:
 |-----|--------|----------|------|
 | 消息渲染 | ✅ | ✅ | 100%功能对等 |
 | 工具调用 | ✅ | ✅ | 100%功能对等 |
-| kelper block | ✅ | ✅ | 100%功能对等 |
+| nlui block | ✅ | ✅ | 100%功能对等 |
 | 智能JSON渲染 | ✅ | ✅ | 100%功能对等 |
 | 流式输出 | ✅ | ✅ | 100%功能对等 |
 | 编辑/删除消息 | ✅ | ⚠️  | 缺少后端API |
