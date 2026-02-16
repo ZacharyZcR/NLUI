@@ -32,10 +32,24 @@ export default defineConfig({
               ],
             },
             {
+              text: 'Deployment',
+              items: [
+                { text: 'Docker', link: '/guide/docker' },
+                { text: 'Desktop App', link: '/guide/desktop' },
+                { text: 'MCP Integration', link: '/guide/mcp' },
+              ],
+            },
+            {
               text: 'Reference',
               items: [
                 { text: 'API Endpoints', link: '/guide/api' },
                 { text: 'SSE Events', link: '/guide/sse-events' },
+              ],
+            },
+            {
+              text: 'Community',
+              items: [
+                { text: 'Contributing', link: '/guide/contributing' },
               ],
             },
           ],
@@ -71,10 +85,24 @@ export default defineConfig({
               ],
             },
             {
+              text: '部署',
+              items: [
+                { text: 'Docker', link: '/zh/guide/docker' },
+                { text: '桌面应用', link: '/zh/guide/desktop' },
+                { text: 'MCP 集成', link: '/zh/guide/mcp' },
+              ],
+            },
+            {
               text: '参考',
               items: [
                 { text: 'API 端点', link: '/zh/guide/api' },
                 { text: 'SSE 事件', link: '/zh/guide/sse-events' },
+              ],
+            },
+            {
+              text: '社区',
+              items: [
+                { text: '贡献指南', link: '/zh/guide/contributing' },
               ],
             },
           ],
