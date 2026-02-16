@@ -26,6 +26,7 @@ type AddTargetRequest struct {
 	Name        string `json:"name" binding:"required"`
 	BaseURL     string `json:"base_url"`
 	Spec        string `json:"spec"`
+	Tools       string `json:"tools"`
 	AuthType    string `json:"auth_type"`
 	AuthToken   string `json:"auth_token"`
 	Description string `json:"description"`
@@ -60,8 +61,8 @@ func (s *Server) addTarget(c *gin.Context) {
 		return
 	}
 
-	if req.BaseURL == "" && req.Spec == "" {
-		c.JSON(400, gin.H{"error": "either base_url or spec is required"})
+	if req.BaseURL == "" && req.Spec == "" && req.Tools == "" {
+		c.JSON(400, gin.H{"error": "either base_url, spec, or tools is required"})
 		return
 	}
 
@@ -78,6 +79,7 @@ func (s *Server) addTarget(c *gin.Context) {
 		Name:        req.Name,
 		BaseURL:     req.BaseURL,
 		Spec:        req.Spec,
+		Tools:       req.Tools,
 		Auth:        config.AuthConfig{Type: req.AuthType, Token: req.AuthToken},
 		Description: req.Description,
 	}
@@ -130,8 +132,10 @@ func (s *Server) removeTarget(c *gin.Context) {
 		return
 	}
 
-	// Remove tool cache
-	config.RemoveToolCache(name)
+	// Remove toolset cache
+	if tsPath, err := config.ToolSetPath(name); err == nil {
+		os.Remove(tsPath)
+	}
 
 	// Reload engine
 	if err := s.reloadEngine(); err != nil {
@@ -719,5 +723,54 @@ func (s *Server) uploadSpec(c *gin.Context) {
 		"spec_path": savedPath,
 		"tools":     len(tools),
 		"endpoints": endpoints,
+	})
+}
+
+// uploadToolSet accepts a multipart file upload and parses it as a ToolSet JSON.
+func (s *Server) uploadToolSet(c *gin.Context) {
+	file, header, err := c.Request.FormFile("toolset")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "toolset file is required"})
+		return
+	}
+	defer file.Close()
+
+	// Save to configDir/toolsets/
+	toolsetsDir := ""
+	if dir, err := config.GlobalDir(); err == nil {
+		toolsetsDir = filepath.Join(dir, "toolsets")
+		os.MkdirAll(toolsetsDir, 0755)
+	}
+	if toolsetsDir == "" {
+		c.JSON(500, gin.H{"error": "cannot determine config directory"})
+		return
+	}
+
+	savedPath := filepath.Join(toolsetsDir, header.Filename)
+	out, err := os.Create(savedPath)
+	if err != nil {
+		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to save file: %v", err)})
+		return
+	}
+	io.Copy(out, file)
+	out.Close()
+
+	ts, err := gateway.LoadToolSet(savedPath)
+	if err != nil {
+		os.Remove(savedPath)
+		c.JSON(400, gin.H{"found": false, "error": err.Error()})
+		return
+	}
+
+	endpoints := make([]string, 0, len(ts.Endpoints))
+	for _, ep := range ts.Endpoints {
+		endpoints = append(endpoints, ep.Name+": "+ep.Description)
+	}
+
+	c.JSON(200, gin.H{
+		"found":      true,
+		"tools_path": savedPath,
+		"tools":      len(ts.Endpoints),
+		"endpoints":  endpoints,
 	})
 }

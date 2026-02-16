@@ -45,9 +45,10 @@ type Endpoint struct {
 }
 
 type ParamInfo struct {
-	Name     string
-	In       string // path, query, header
-	Required bool
+	Name     string `json:"name"`
+	In       string `json:"in"`
+	Type     string `json:"type"`
+	Required bool   `json:"required"`
 }
 
 func BuildTools(doc *openapi3.T, targetName, baseURL string, auth AuthConfig) ([]llm.Tool, map[string]*Endpoint) {
@@ -137,7 +138,13 @@ func buildParams(op *openapi3.Operation) (map[string]interface{}, []ParamInfo) {
 		if p.Required {
 			required = append(required, p.Name)
 		}
-		paramInfos = append(paramInfos, ParamInfo{Name: p.Name, In: p.In, Required: p.Required})
+		paramType := "string"
+		if p.Schema != nil && p.Schema.Value != nil && p.Schema.Value.Type != nil {
+			if types := p.Schema.Value.Type.Slice(); len(types) == 1 {
+				paramType = types[0]
+			}
+		}
+		paramInfos = append(paramInfos, ParamInfo{Name: p.Name, In: p.In, Type: paramType, Required: p.Required})
 	}
 
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
@@ -209,4 +216,38 @@ func generateOpID(method, path string) string {
 	path = strings.ReplaceAll(path, "/", "_")
 	path = strings.Trim(path, "_")
 	return strings.ToLower(method) + "_" + path
+}
+
+func BuildToolSet(targetName, baseURL string, auth AuthConfig, tools []llm.Tool, endpoints map[string]*Endpoint) *ToolSet {
+	tsEndpoints := make([]ToolSetEndpoint, 0, len(tools))
+	for _, tool := range tools {
+		ep := endpoints[tool.Function.Name]
+		if ep == nil {
+			continue
+		}
+		params := ep.Params
+		if params == nil {
+			params = []ParamInfo{}
+		}
+		var parameters map[string]interface{}
+		if m, ok := tool.Function.Parameters.(map[string]interface{}); ok {
+			parameters = m
+		}
+		tsEndpoints = append(tsEndpoints, ToolSetEndpoint{
+			Name:        tool.Function.Name,
+			Description: tool.Function.Description,
+			Method:      ep.Method,
+			Path:        ep.Path,
+			Params:      params,
+			HasBody:     ep.HasBody,
+			Parameters:  parameters,
+		})
+	}
+	return &ToolSet{
+		Version:   ToolSetVersion,
+		Target:    targetName,
+		BaseURL:   baseURL,
+		Auth:      auth,
+		Endpoints: tsEndpoints,
+	}
 }

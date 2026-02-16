@@ -10,7 +10,6 @@ import (
 	"github.com/ZacharyZcR/NLUI/core/llm"
 	"github.com/ZacharyZcR/NLUI/gateway"
 	"github.com/ZacharyZcR/NLUI/mcp"
-	"github.com/getkin/kin-openapi/openapi3"
 )
 
 // Router combines HTTP caller and MCP clients into a unified tool executor.
@@ -86,44 +85,40 @@ func BuildSystemPrompt(lang string, targets []config.Target, tools []llm.Tool) s
 // OnTargetFunc is called after each target's tools are discovered.
 type OnTargetFunc func(name string, tools []llm.Tool)
 
-// DiscoverTools loads OpenAPI specs from all targets and returns aggregated tools and endpoints.
+// DiscoverTools loads tools from all targets and returns aggregated tools and endpoints.
+// Priority: target.Tools (toolset JSON) > target.Spec (OpenAPI file) > target.BaseURL (auto-discover).
 func DiscoverTools(targets []config.Target, onTarget OnTargetFunc) ([]llm.Tool, map[string]*gateway.Endpoint) {
 	var allTools []llm.Tool
 	allEndpoints := make(map[string]*gateway.Endpoint)
 
 	for _, target := range targets {
-		var doc *openapi3.T
+		var tools []llm.Tool
+		var endpoints map[string]*gateway.Endpoint
 
-		if target.Spec != "" {
-			fmt.Fprintf(os.Stderr, "Loading spec: %s (%s)\n", target.Name, target.Spec)
-			var err error
-			doc, err = gateway.LoadSpec(target.Spec)
+		if target.Tools != "" {
+			// Direct toolset file
+			fmt.Fprintf(os.Stderr, "Loading toolset: %s (%s)\n", target.Name, target.Tools)
+			ts, err := gateway.LoadToolSet(target.Tools)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "WARN: skip %s: %v\n", target.Name, err)
 				continue
 			}
-		} else if target.BaseURL != "" {
-			fmt.Fprintf(os.Stderr, "Discovering spec: %s (%s)\n", target.Name, target.BaseURL)
-			var specURL string
-			var err error
-			doc, specURL, err = gateway.DiscoverSpec(target.BaseURL)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: skip %s: %v\n", target.Name, err)
+			tools, endpoints = ts.Build()
+		} else {
+			// OpenAPI path: load spec then build
+			auth := gateway.AuthConfig{
+				Type:       target.Auth.Type,
+				HeaderName: target.Auth.HeaderName,
+				Token:      target.Auth.Token,
+			}
+			tools, endpoints = discoverFromSpec(target, auth)
+			if tools == nil {
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "  Found: %s\n", specURL)
+			// Cache as toolset
+			saveToolSetCache(target.Name, target.BaseURL, auth, tools, endpoints)
 		}
 
-		if doc == nil {
-			continue
-		}
-
-		auth := gateway.AuthConfig{
-			Type:       target.Auth.Type,
-			HeaderName: target.Auth.HeaderName,
-			Token:      target.Auth.Token,
-		}
-		tools, endpoints := gateway.BuildTools(doc, target.Name, target.BaseURL, auth)
 		allTools = append(allTools, tools...)
 		for k, v := range endpoints {
 			allEndpoints[k] = v
@@ -137,6 +132,40 @@ func DiscoverTools(targets []config.Target, onTarget OnTargetFunc) ([]llm.Tool, 
 	}
 
 	return allTools, allEndpoints
+}
+
+func discoverFromSpec(target config.Target, auth gateway.AuthConfig) ([]llm.Tool, map[string]*gateway.Endpoint) {
+	if target.Spec != "" {
+		fmt.Fprintf(os.Stderr, "Loading spec: %s (%s)\n", target.Name, target.Spec)
+		doc, err := gateway.LoadSpec(target.Spec)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: skip %s: %v\n", target.Name, err)
+			return nil, nil
+		}
+		return gateway.BuildTools(doc, target.Name, target.BaseURL, auth)
+	}
+
+	if target.BaseURL != "" {
+		fmt.Fprintf(os.Stderr, "Discovering spec: %s (%s)\n", target.Name, target.BaseURL)
+		doc, specURL, err := gateway.DiscoverSpec(target.BaseURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: skip %s: %v\n", target.Name, err)
+			return nil, nil
+		}
+		fmt.Fprintf(os.Stderr, "  Found: %s\n", specURL)
+		return gateway.BuildTools(doc, target.Name, target.BaseURL, auth)
+	}
+
+	return nil, nil
+}
+
+func saveToolSetCache(targetName, baseURL string, auth gateway.AuthConfig, tools []llm.Tool, endpoints map[string]*gateway.Endpoint) {
+	tsPath, err := config.ToolSetPath(targetName)
+	if err != nil {
+		return
+	}
+	ts := gateway.BuildToolSet(targetName, baseURL, auth, tools, endpoints)
+	gateway.SaveToolSet(tsPath, ts)
 }
 
 // InitMCPClients connects to configured MCP servers and returns clients + their tools.

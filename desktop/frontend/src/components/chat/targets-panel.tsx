@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   ProbeTarget,
   UploadSpec,
+  UploadToolSet,
   ListTargets,
   AddTarget,
   RemoveTarget,
@@ -26,6 +27,7 @@ interface TargetInfo {
 interface ProbeResult {
   found: boolean;
   spec_url?: string;
+  tools_path?: string;
   tools?: number;
   endpoints?: string[];
   error?: string;
@@ -42,6 +44,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
   const [tgtName, setTgtName] = useState("");
   const [tgtURL, setTgtURL] = useState("");
   const [tgtSpec, setTgtSpec] = useState("");
+  const [tgtTools, setTgtTools] = useState("");
   const [tgtApiKey, setTgtApiKey] = useState("");
   const [tgtDesc, setTgtDesc] = useState("");
   const [probing, setProbing] = useState(false);
@@ -90,21 +93,35 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
     setProbing(false);
   };
 
+  const handleUploadToolSet = async () => {
+    setProbing(true);
+    setProbeResult(null);
+    setTgtError("");
+    try {
+      const result = (await UploadToolSet()) as ProbeResult;
+      setProbeResult(result);
+      if (result.found && result.tools_path) setTgtTools(result.tools_path);
+    } catch (e) {
+      setTgtError(e instanceof Error ? e.message : "upload failed");
+    }
+    setProbing(false);
+  };
+
   const handleAddTarget = async () => {
-    if (!tgtName || (!tgtURL && !tgtSpec)) {
+    if (!tgtName || (!tgtURL && !tgtSpec && !tgtTools)) {
       setTgtError(t("targets.nameUrlRequired"));
       return;
     }
     setTgtError("");
-    // If API key is provided, use bearer auth; otherwise empty
     const authType = tgtApiKey ? "bearer" : "";
-    const result = await AddTarget(tgtName, tgtURL, tgtSpec, authType, tgtApiKey, tgtDesc);
+    const result = await AddTarget(tgtName, tgtURL, tgtSpec, tgtTools, authType, tgtApiKey, tgtDesc);
     if (result) {
       setTgtError(result);
     } else {
       setTgtName("");
       setTgtURL("");
       setTgtSpec("");
+      setTgtTools("");
       setTgtApiKey("");
       setTgtDesc("");
       setProbeResult(null);
@@ -174,10 +191,16 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
             </div>
 
             {/* Upload */}
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={handleUploadSpec} disabled={probing}>
-              <Upload className="w-3.5 h-3.5 mr-1.5" />
-              {t("targets.upload")}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={handleUploadSpec} disabled={probing}>
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                {t("targets.upload")}
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={handleUploadToolSet} disabled={probing}>
+                <FileText className="w-3.5 h-3.5 mr-1.5" />
+                {t("targets.uploadToolSet")}
+              </Button>
+            </div>
 
             {/* Probe result */}
             {probeResult && (
@@ -243,7 +266,7 @@ export function TargetsPanel({ onClose }: TargetsPanelProps) {
 
             {tgtError && <p className="text-xs text-destructive">{tgtError}</p>}
 
-            <Button variant="outline" className="w-full" onClick={handleAddTarget} disabled={!tgtName || (!tgtURL && !tgtSpec)}>
+            <Button variant="outline" className="w-full" onClick={handleAddTarget} disabled={!tgtName || (!tgtURL && !tgtSpec && !tgtTools)}>
               <Plus className="w-4 h-4 mr-2" />
               {t("targets.addBtn")}
             </Button>

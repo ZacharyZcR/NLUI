@@ -27,6 +27,7 @@ type Target struct {
 	Name        string     `yaml:"name"`
 	BaseURL     string     `yaml:"base_url"`
 	Spec        string     `yaml:"spec"`
+	Tools       string     `yaml:"tools"`
 	Auth        AuthConfig `yaml:"auth"`
 	Description string     `yaml:"description"`
 }
@@ -75,39 +76,13 @@ func GlobalConfigPath() (string, error) {
 	return filepath.Join(dir, "kelper.yaml"), nil
 }
 
-// SaveToolCache writes tool JSON to <GlobalDir>/tools/<targetName>.json.
-func SaveToolCache(targetName string, data []byte) error {
+// ToolSetPath returns the path for a target's toolset file: <GlobalDir>/toolsets/<name>.json.
+func ToolSetPath(targetName string) (string, error) {
 	dir, err := GlobalDir()
 	if err != nil {
-		return err
+		return "", err
 	}
-	toolsDir := filepath.Join(dir, "tools")
-	if err := os.MkdirAll(toolsDir, 0755); err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(toolsDir, targetName+".json"), data, 0644)
-}
-
-// LoadToolCache reads cached tool JSON for a target.
-func LoadToolCache(targetName string) ([]byte, error) {
-	dir, err := GlobalDir()
-	if err != nil {
-		return nil, err
-	}
-	return os.ReadFile(filepath.Join(dir, "tools", targetName+".json"))
-}
-
-// RemoveToolCache deletes the tool cache for a target.
-func RemoveToolCache(targetName string) error {
-	dir, err := GlobalDir()
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(dir, "tools", targetName+".json")
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
+	return filepath.Join(dir, "toolsets", targetName+".json"), nil
 }
 
 func Load(path string) (*Config, error) {

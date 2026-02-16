@@ -93,11 +93,7 @@ func (a *App) initialize() {
 	}
 
 	fmt.Fprintf(os.Stderr, "Loading %d targets\n", len(cfg.Targets))
-	allTools, allEndpoints := bootstrap.DiscoverTools(cfg.Targets, func(name string, tools []llm.Tool) {
-		if data, err := json.Marshal(tools); err == nil {
-			config.SaveToolCache(name, data)
-		}
-	})
+	allTools, allEndpoints := bootstrap.DiscoverTools(cfg.Targets, nil)
 	fmt.Fprintf(os.Stderr, "Discovered %d tools from targets\n", len(allTools))
 
 	// Build target display name mapping from endpoints
@@ -367,6 +363,36 @@ func (a *App) UploadSpec() map[string]interface{} {
 	}
 }
 
+// UploadToolSet opens a file dialog for the user to pick a ToolSet JSON file.
+func (a *App) UploadToolSet() map[string]interface{} {
+	path, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select ToolSet JSON",
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "ToolSet JSON (*.json)", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		return map[string]interface{}{"found": false, "error": "no file selected"}
+	}
+
+	ts, err := gateway.LoadToolSet(path)
+	if err != nil {
+		return map[string]interface{}{"found": false, "error": err.Error()}
+	}
+
+	endpoints := make([]string, 0, len(ts.Endpoints))
+	for _, ep := range ts.Endpoints {
+		endpoints = append(endpoints, ep.Name+": "+ep.Description)
+	}
+
+	return map[string]interface{}{
+		"found":      true,
+		"tools_path": path,
+		"tools":      len(ts.Endpoints),
+		"endpoints":  endpoints,
+	}
+}
+
 // ProbeTarget tries to discover an OpenAPI spec from a base URL.
 func (a *App) ProbeTarget(baseURL string) map[string]interface{} {
 	doc, specURL, err := gateway.DiscoverSpec(baseURL)
@@ -433,9 +459,9 @@ func (a *App) ListTargets() []map[string]interface{} {
 }
 
 // AddTarget adds a new API target to the config and reinitializes.
-func (a *App) AddTarget(name, baseURL, spec, authType, authToken, description string) string {
-	if name == "" || (baseURL == "" && spec == "") {
-		return "name and (base_url or spec) are required"
+func (a *App) AddTarget(name, baseURL, spec, tools, authType, authToken, description string) string {
+	if name == "" || (baseURL == "" && spec == "" && tools == "") {
+		return "name and (base_url, spec, or tools) are required"
 	}
 
 	cfg := &config.Config{}
@@ -454,6 +480,7 @@ func (a *App) AddTarget(name, baseURL, spec, authType, authToken, description st
 		Name:        name,
 		BaseURL:     baseURL,
 		Spec:        spec,
+		Tools:       tools,
 		Auth:        config.AuthConfig{Type: authType, Token: authToken},
 		Description: description,
 	})
@@ -500,7 +527,9 @@ func (a *App) RemoveTarget(name string) string {
 		return err.Error()
 	}
 
-	config.RemoveToolCache(name)
+	if tsPath, err := config.ToolSetPath(name); err == nil {
+		os.Remove(tsPath)
+	}
 	a.initialize()
 	return ""
 }

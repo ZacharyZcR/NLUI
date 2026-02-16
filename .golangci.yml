@@ -39,7 +39,7 @@ linters:
       - linters: [errcheck]
         source: "[rR]and\\.Read"
       - linters: [errcheck]
-        source: "config\\.RemoveToolCache"
+        source: "gateway\\.SaveToolSet"
     paths:
       - desktop
       - sdk/examples

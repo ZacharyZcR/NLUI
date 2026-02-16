@@ -61,8 +61,9 @@ func New(cfg *config.Config, eng *engine.Engine) *Server {
 		api.POST("/chat/stop", s.stopChat)
 		api.POST("/chat/confirm", s.confirmTool)
 
-		// Specs
+		// Specs & ToolSets
 		api.POST("/specs/upload", s.uploadSpec)
+		api.POST("/toolsets/upload", s.uploadToolSet)
 
 		// Conversations
 		api.GET("/conversations", s.listConversations)
