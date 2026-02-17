@@ -49,6 +49,12 @@ User: [approve]
 NLUI: Done. User zhangsan has been deleted.
 ```
 
+<p align="center">
+  <img src="docs/public/screenshots/en.png" alt="NLUI Desktop — English" width="100%">
+  <br>
+  <em>NLUI Desktop with GLM-5 — query all users through natural language</em>
+</p>
+
 No forms. No routing. No state management. The user states what they want in natural language, and NLUI figures out which APIs to call, in what order, with what parameters.
 
 This isn't meant to replace every frontend. A data-dense dashboard, a drag-and-drop editor, a real-time collaboration tool — those still need bespoke UI. But for the vast majority of CRUD operations, admin panels, internal tools, and ops workflows that make up the boring bulk of frontend work, **a conversation is a better interface than a form**.
