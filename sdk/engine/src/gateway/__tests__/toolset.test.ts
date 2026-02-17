@@ -39,7 +39,7 @@ describe('buildFromToolSet round-trip', () => {
     target: 'petstore',
     base_url: 'http://localhost:8080',
     auth,
-    endpoints: orig.tools.map(tool => {
+    endpoints: orig.tools.filter(tool => orig.endpoints.has(tool.function.name)).map(tool => {
       const ep = orig.endpoints.get(tool.function.name)!;
       return {
         name: tool.function.name,
@@ -96,7 +96,7 @@ describe('buildFromToolSet empty', () => {
       auth: { type: '' }, endpoints: [],
     };
     const { tools, endpoints } = buildFromToolSet(ts);
-    expect(tools).toHaveLength(0);
+    expect(tools).toHaveLength(1); // set_auth only
     expect(endpoints.size).toBe(0);
   });
 });

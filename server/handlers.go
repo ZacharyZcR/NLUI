@@ -128,7 +128,7 @@ func (s *Server) importPreset(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	s.reloadEngine()
+	_ = s.reloadEngine()
 	c.JSON(200, gin.H{"ok": true})
 }
 
@@ -534,7 +534,7 @@ func (s *Server) reloadEngine() error {
 
 	// Persist auth tokens when set_auth is called
 	res.Router.HttpCaller.OnAuthChanged = func(configName, token string) {
-		s.svc.SaveTargetAuth(configName, token)
+		_ = s.svc.SaveTargetAuth(configName, token)
 	}
 
 	llmClient := llm.NewAutoClient(s.cfg.LLM.APIBase, s.cfg.LLM.APIKey, s.cfg.LLM.Model, s.cfg.Proxy, s.cfg.LLM.IsStream())

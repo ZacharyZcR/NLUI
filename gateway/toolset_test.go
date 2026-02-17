@@ -45,9 +45,9 @@ func TestToolSetRoundTrip(t *testing.T) {
 	// Build from loaded toolset
 	tools, endpoints := loaded.Build()
 
-	// ToolSet excludes set_auth (no endpoint entry), so round-trip has one less tool
-	if len(tools) != len(origEndpoints) {
-		t.Fatalf("round-trip tools = %d, want %d", len(tools), len(origEndpoints))
+	// Build injects set_auth, so tools = endpoints + 1
+	if len(tools) != len(ts.Endpoints)+1 {
+		t.Fatalf("round-trip tools = %d, want %d", len(tools), len(ts.Endpoints)+1)
 	}
 	if len(endpoints) != len(origEndpoints) {
 		t.Fatalf("round-trip endpoints = %d, want %d", len(endpoints), len(origEndpoints))
@@ -129,8 +129,9 @@ func TestBuildToolSetEmptyEndpoints(t *testing.T) {
 	}
 
 	tools, endpoints := ts.Build()
-	if len(tools) != 0 {
-		t.Errorf("expected 0 tools, got %d", len(tools))
+	// Build injects set_auth for the target, so 1 tool even with 0 endpoints
+	if len(tools) != 1 {
+		t.Errorf("expected 1 tool (set_auth), got %d", len(tools))
 	}
 	if len(endpoints) != 0 {
 		t.Errorf("expected 0 endpoints, got %d", len(endpoints))

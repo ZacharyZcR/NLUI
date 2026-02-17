@@ -129,7 +129,7 @@ func (g *GeminiClient) ChatStreamWithTools(ctx context.Context, messages []Messa
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return nil, nil, fmt.Errorf("Gemini API error %d: %s", resp.StatusCode, string(respBody))
+		return nil, nil, fmt.Errorf("gemini API error %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	if g.stream {
@@ -200,7 +200,7 @@ func (g *GeminiClient) buildRequest(messages []Message, tools []Tool) geminiRequ
 			}
 			for _, tc := range m.ToolCalls {
 				var args map[string]interface{}
-				json.Unmarshal([]byte(tc.Function.Arguments), &args)
+				_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
 				parts = append(parts, geminiPart{
 					FunctionCall: &geminiFunctionCall{
 						Name: tc.Function.Name,

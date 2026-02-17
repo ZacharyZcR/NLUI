@@ -270,20 +270,21 @@ func (c *Caller) setAuth(targetName, argsJSON string) (string, error) {
 	count := 0
 	var actualType, actualHeader string
 	for _, ep := range c.endpoints {
-		if ep.TargetName == targetName {
-			ep.Auth.Token = args.Token
-			if args.AuthType != "" {
-				ep.Auth.Type = args.AuthType
-			} else if ep.Auth.Type == "" {
-				ep.Auth.Type = "bearer"
-			}
-			if args.HeaderName != "" {
-				ep.Auth.HeaderName = args.HeaderName
-			}
-			actualType = ep.Auth.Type
-			actualHeader = ep.Auth.HeaderName
-			count++
+		if ep.TargetName != targetName {
+			continue
 		}
+		ep.Auth.Token = args.Token
+		if args.AuthType != "" {
+			ep.Auth.Type = args.AuthType
+		} else if ep.Auth.Type == "" {
+			ep.Auth.Type = "bearer"
+		}
+		if args.HeaderName != "" {
+			ep.Auth.HeaderName = args.HeaderName
+		}
+		actualType = ep.Auth.Type
+		actualHeader = ep.Auth.HeaderName
+		count++
 	}
 
 	if count == 0 {

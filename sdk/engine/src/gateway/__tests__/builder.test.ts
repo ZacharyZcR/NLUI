@@ -16,7 +16,7 @@ describe('buildTools', () => {
   );
 
   it('generates correct number of tools', () => {
-    expect(tools).toHaveLength(4);
+    expect(tools).toHaveLength(5); // 4 API + set_auth
     expect(endpoints.size).toBe(4);
   });
 
@@ -85,7 +85,7 @@ describe('buildTools edge cases', () => {
       },
     };
     const { tools } = buildTools(spec, 'api', 'http://x', { type: '' });
-    expect(tools).toHaveLength(1);
+    expect(tools).toHaveLength(2); // 1 API + set_auth
     expect(tools[0].function.name).toBe('api__get_items');
   });
 
