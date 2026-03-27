@@ -4,12 +4,13 @@ go 1.25.7
 
 require (
 	github.com/ZacharyZcR/NLUI v0.0.0-00010101000000-000000000000
-	github.com/wailsapp/wails/v2 v2.11.0
+	github.com/wailsapp/wails/v2 v2.12.0
 )
 
 replace github.com/ZacharyZcR/NLUI => ..
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
